@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>うつぼ公園AR - テスト</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <title>カメラ権限テスト</title>
   </head>
-  <body>
-    <a-scene>
-      <a-box position="0 1 -3" rotation="0 45 0" color="#E091A8"></a-box>
-      <a-sky color="#ECECEC"></a-sky>
-    </a-scene>
+  <body style="margin:0;">
+    <video id="camera" autoplay playsinline style="width:100%;"></video>
+    <script>
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then((stream) => {
+          document.getElementById("camera").srcObject = stream;
+        })
+        .catch((err) => {
+          document.body.innerHTML = "エラー: " + err.message;
+        });
+    </script>
   </body>
 </html>
