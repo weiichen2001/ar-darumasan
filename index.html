@@ -1,18 +1,70 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>カメラ権限テスト</title>
+    <title>MindARテスト</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+        }
+        a-scene {
+          width: 100vw;
+          height: 100vh;
+          position: fixed;
+          top: 0;
+          left: 0;
+        }
+        #debug-log {
+          position: fixed; bottom: 0; left: 0; right: 0;
+          max-height: 40vh; overflow-y: auto;
+          background: rgba(0,0,0,0.8); color: #0f0;
+          font-size: 12px; padding: 8px; z-index: 9999;
+          white-space: pre-wrap; font-family: monospace;
+        }
+      </style>
   </head>
   <body style="margin:0;">
-    <video id="camera" autoplay playsinline style="width:100%;"></video>
+    <a-scene
+      mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;"
+      color-space="sRGB"
+      embedded
+      renderer="colorManagement: true, physicallyCorrectLights: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity id="target0" mindar-image-target="targetIndex: 0">
+        <a-box position="0 0.2 0" scale="0.2 0.2 0.2" color="#E091A8"></a-box>
+      </a-entity>
+    </a-scene>
+
+    <div id="debug-log">起動中...</div>
+
     <script>
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then((stream) => {
-          document.getElementById("camera").srcObject = stream;
-        })
-        .catch((err) => {
-          document.body.innerHTML = "エラー: " + err.message;
-        });
+      const logEl = document.getElementById("debug-log");
+      function log(msg) {
+        logEl.textContent += "\n" + msg;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      window.onerror = function (msg, url, line) {
+        log("❌ エラー: " + msg + " (行:" + line + ")");
+      };
+
+      const sceneEl = document.querySelector("a-scene");
+      sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
+      sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
+      sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
+
+      const target0 = document.getElementById("target0");
+      target0.addEventListener("targetFound", () => log("🎯 ターゲット発見！"));
+      target0.addEventListener("targetLost", () => log("👋 ターゲット見失った"));
     </script>
   </body>
 </html>
