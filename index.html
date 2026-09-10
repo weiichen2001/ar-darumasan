@@ -21,14 +21,21 @@
         }
         #debug-log {
           position: fixed; bottom: 0; left: 0; right: 0;
-          max-height: 40vh; overflow-y: auto;
+          max-height: 30vh; overflow-y: auto;
           background: rgba(0,0,0,0.8); color: #0f0;
           font-size: 12px; padding: 8px; z-index: 9999;
           white-space: pre-wrap; font-family: monospace;
         }
+        #mic-start-btn {
+          position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+          z-index: 10000; padding: 12px 20px; font-size: 16px;
+          background: #E091A8; color: white; border: none; border-radius: 8px;
+        }
       </style>
   </head>
   <body style="margin:0;">
+    <button id="mic-start-btn">タップしてマイクを許可</button>
+
     <a-scene
       mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;"
       color-space="sRGB"
@@ -57,31 +64,41 @@
         logEl.textContent += "\n" + msg;
         logEl.scrollTop = logEl.scrollHeight;
       }
-    
+
       window.onerror = function (msg, url, line) {
         log("❌ エラー: " + msg + " (行:" + line + ")");
       };
-    
+
       const sceneEl = document.querySelector("a-scene");
       sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
       sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
       sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
-    
+
       const roseEntity = document.querySelector('[gltf-model]');
       const target0 = document.getElementById("target0");
-    
+
       const SPEED = 0.5;
-      const MAX_PROGRESS = 5;    // 靠近進度的上限（抽象數值，不再是真的座標距離）
-      const BASE_SCALE = 1;        // 最遠時的大小
-      const MAX_SCALE = 4;       // 最近時的大小
+      const MAX_PROGRESS = 5;
+      const BASE_SCALE = 1;
+      const MAX_SCALE = 4;
       const BASE_Y = -0.1;
       const Y_PER_PROGRESS = -0.6;
       const MIN_LOST_MS = 400;
-    
-      let progress = 0;            // 靠近進度，0=最遠，MAX_PROGRESS=最近
+
+      let progress = 0;
       let lostAt = null;
-    
+      let isRetreating = false;
+
+      function applyPose() {
+        const ratio = progress / MAX_PROGRESS;
+        const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
+        const yValue = BASE_Y + progress * Y_PER_PROGRESS;
+        roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
+        roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
+      }
+
       target0.addEventListener("targetFound", () => {
+        if (isRetreating) return;
         if (lostAt !== null) {
           const lostDurationMs = Date.now() - lostAt;
           if (lostDurationMs >= MIN_LOST_MS) {
@@ -92,19 +109,117 @@
           }
           lostAt = null;
         }
-    
-        const ratio = progress / MAX_PROGRESS; // 0〜1之間
-        const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
-        const yValue = BASE_Y + progress * Y_PER_PROGRESS;
-    
-        log("🎯 発見！ progress=" + progress.toFixed(2) + " scale=" + scaleValue.toFixed(2));
-    
-        roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
-        roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
+        log("🎯 発見！ progress=" + progress.toFixed(2));
+        applyPose();
       });
-    
+
       target0.addEventListener("targetLost", () => {
         lostAt = Date.now();
+      });
+
+      // ---- ここから吹き戻しの機能（可視化版）----
+const RETREAT_DURATION_MS = 800;
+const BASELINE_SMOOTHING = 0.002;
+const SPIKE_MULTIPLIER = 1.8;     // 從2.2調高到3.5，更嚴格
+const MIN_ABSOLUTE_FLOOR = 20;    // 從12調高到25
+const SUSTAIN_FRAMES = 2;
+const BLOW_COOLDOWN_MS = 1000;
+
+let ambientBaseline = 15;
+let sustainCounter = 0;
+let lastBlowTime = 0;
+let lastStatusLogTime = 0;
+
+async function setupMic() {
+  try {
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(micStream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    log("✅ マイク準備完了、環境音を学習中...");
+    monitorVolume(analyser);
+  } catch (err) {
+    log("❌ マイクエラー: " + err.message);
+  }
+}
+
+function monitorVolume(analyser) {
+  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  const recentWindow = []; // 最近幾格的音量，用來算滑動平均
+  const WINDOW_SIZE = 5;
+
+  function check() {
+    analyser.getByteFrequencyData(dataArray);
+    const fullAvg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+
+    recentWindow.push(fullAvg);
+    if (recentWindow.length > WINDOW_SIZE) recentWindow.shift();
+    const smoothedVol = recentWindow.reduce((a, b) => a + b, 0) / recentWindow.length;
+
+    const now = Date.now();
+    const dynamicThreshold = Math.max(ambientBaseline * SPIKE_MULTIPLIER, MIN_ABSOLUTE_FLOOR);
+    const isSpike = smoothedVol > dynamicThreshold;
+
+    if (isSpike) {
+      sustainCounter++;
+    } else {
+      sustainCounter = 0;
+      ambientBaseline = ambientBaseline * (1 - BASELINE_SMOOTHING) + fullAvg * BASELINE_SMOOTHING;
+    }
+
+    if (now - lastStatusLogTime > 1000) {
+      lastStatusLogTime = now;
+      log("📊 瞬間=" + fullAvg.toFixed(1) + " 平滑=" + smoothedVol.toFixed(1) + " 基準=" + ambientBaseline.toFixed(1) + " 門檻=" + dynamicThreshold.toFixed(1));
+    }
+
+    if (sustainCounter >= SUSTAIN_FRAMES && now - lastBlowTime > BLOW_COOLDOWN_MS) {
+      lastBlowTime = now;
+      sustainCounter = 0;
+      onBlowDetected(smoothedVol, ambientBaseline);
+    }
+
+    requestAnimationFrame(check);
+  }
+  check();
+}
+
+function onBlowDetected(vol, baseline) {
+  if (progress >= MAX_PROGRESS && !isRetreating) {
+    log("💨 息を検知！ vol=" + vol.toFixed(1) + " → 吹き飛ばす！");
+    animateRetreat();
+  } else if (!isRetreating) {
+    log("（まだ上限に達していないので無視）");
+  }
+}
+
+function animateRetreat() {
+  isRetreating = true;
+  const startProgress = progress;
+  const startTime = Date.now();
+
+  function step() {
+    const elapsed = Date.now() - startTime;
+    const t = Math.min(elapsed / RETREAT_DURATION_MS, 1);
+    progress = startProgress * (1 - t);
+    applyPose();
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      progress = 0;
+      applyPose();
+      isRetreating = false;
+      log("🌬️ 吹き飛ばし完了");
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+      document.getElementById("mic-start-btn").addEventListener("click", (e) => {
+        setupMic();
+        e.target.style.display = "none";
       });
     </script>
   </body>
