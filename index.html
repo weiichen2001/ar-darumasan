@@ -43,7 +43,7 @@
         <a-entity
           gltf-model="models/rose.glb"
           position="0 0 0"
-          scale="2 2 2"
+          scale="1 1 1"
           rotation="0 0 0"
         ></a-entity>
       </a-entity>
@@ -57,19 +57,55 @@
         logEl.textContent += "\n" + msg;
         logEl.scrollTop = logEl.scrollHeight;
       }
-
+    
       window.onerror = function (msg, url, line) {
         log("❌ エラー: " + msg + " (行:" + line + ")");
       };
-
+    
       const sceneEl = document.querySelector("a-scene");
       sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
       sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
       sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
-
+    
+      const roseEntity = document.querySelector('[gltf-model]');
       const target0 = document.getElementById("target0");
-      target0.addEventListener("targetFound", () => log("🎯 ターゲット発見！"));
-      target0.addEventListener("targetLost", () => log("👋 ターゲット見失った"));
+    
+      const SPEED = 0.5;
+      const MAX_PROGRESS = 5;    // 靠近進度的上限（抽象數值，不再是真的座標距離）
+      const BASE_SCALE = 1;        // 最遠時的大小
+      const MAX_SCALE = 4;       // 最近時的大小
+      const BASE_Y = -0.1;
+      const Y_PER_PROGRESS = -0.6;
+      const MIN_LOST_MS = 400;
+    
+      let progress = 0;            // 靠近進度，0=最遠，MAX_PROGRESS=最近
+      let lostAt = null;
+    
+      target0.addEventListener("targetFound", () => {
+        if (lostAt !== null) {
+          const lostDurationMs = Date.now() - lostAt;
+          if (lostDurationMs >= MIN_LOST_MS) {
+            const elapsedSec = lostDurationMs / 1000;
+            progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
+          } else {
+            log("（ノイズ判定、無視）" + lostDurationMs + "ms");
+          }
+          lostAt = null;
+        }
+    
+        const ratio = progress / MAX_PROGRESS; // 0〜1之間
+        const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
+        const yValue = BASE_Y + progress * Y_PER_PROGRESS;
+    
+        log("🎯 発見！ progress=" + progress.toFixed(2) + " scale=" + scaleValue.toFixed(2));
+    
+        roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
+        roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
+      });
+    
+      target0.addEventListener("targetLost", () => {
+        lostAt = Date.now();
+      });
     </script>
   </body>
 </html>
