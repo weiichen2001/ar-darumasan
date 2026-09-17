@@ -40,19 +40,20 @@
       mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;"
       color-space="sRGB"
       embedded
-      renderer="colorManagement: true, physicallyCorrectLights: true"
+      renderer="colorManagement: true"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: true"
     >
+      <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
+      <a-light type="directional" color="#FFF" intensity="0.6" position="1 1 1"></a-light>
+
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity id="target0" mindar-image-target="targetIndex: 0">
-        <a-entity
-          gltf-model="models/rose.glb"
-          position="0 0 0"
-          scale="1 1 1"
-          rotation="0 0 0"
-        ></a-entity>
+        <a-entity id="rose-wrapper" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+          <a-entity id="rose-normal" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+          <a-entity id="rose-startled" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
+        </a-entity>
       </a-entity>
     </a-scene>
 
@@ -74,7 +75,9 @@
       sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
       sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
 
-      const roseEntity = document.querySelector('[gltf-model]');
+      const roseEntity = document.getElementById('rose-wrapper');
+      const normalEl = document.getElementById('rose-normal');
+      const startledEl = document.getElementById('rose-startled');
       const target0 = document.getElementById("target0");
 
       const SPEED = 0.5;
@@ -85,9 +88,13 @@
       const Y_PER_PROGRESS = -0.6;
       const MIN_LOST_MS = 400;
 
+      const STARTLE_FLASH_MS = 220; // 驚慌姿勢+搖晃動畫的總長度
+      const TILT_ANGLE = 18;        // 快跌倒時傾斜的角度
+
       let progress = 0;
       let lostAt = null;
       let isRetreating = false;
+      let isStartling = false;
 
       function applyPose() {
         const ratio = progress / MAX_PROGRESS;
@@ -97,6 +104,32 @@
         roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
       }
 
+      function flashStartled() {
+        isStartling = true;
+        startledEl.setAttribute('visible', true);
+        normalEl.setAttribute('visible', false);
+
+        const startTime = Date.now();
+
+        function tiltStep() {
+          const elapsed = Date.now() - startTime;
+          const t = Math.min(elapsed / STARTLE_FLASH_MS, 1);
+          // sin曲線：0 → 最大傾斜 → 0，做出「快跌倒又擺正」的搖晃感
+          const wobble = Math.sin(t * Math.PI) * TILT_ANGLE;
+          roseEntity.setAttribute('rotation', { x: 0, y: 0, z: wobble });
+
+          if (t < 1) {
+            requestAnimationFrame(tiltStep);
+          } else {
+            roseEntity.setAttribute('rotation', { x: 0, y: 0, z: 0 });
+            startledEl.setAttribute('visible', false);
+            normalEl.setAttribute('visible', true);
+            isStartling = false;
+          }
+        }
+        requestAnimationFrame(tiltStep);
+      }
+
       target0.addEventListener("targetFound", () => {
         if (isRetreating) return;
         if (lostAt !== null) {
@@ -104,6 +137,7 @@
           if (lostDurationMs >= MIN_LOST_MS) {
             const elapsedSec = lostDurationMs / 1000;
             progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
+            flashStartled(); // 真的被抓包時，才播放驚慌+搖晃
           } else {
             log("（ノイズ判定、無視）" + lostDurationMs + "ms");
           }
@@ -118,104 +152,104 @@
       });
 
       // ---- ここから吹き戻しの機能（可視化版）----
-const RETREAT_DURATION_MS = 800;
-const BASELINE_SMOOTHING = 0.002;
-const SPIKE_MULTIPLIER = 1.8;     // 從2.2調高到3.5，更嚴格
-const MIN_ABSOLUTE_FLOOR = 20;    // 從12調高到25
-const SUSTAIN_FRAMES = 2;
-const BLOW_COOLDOWN_MS = 1000;
+      const RETREAT_DURATION_MS = 800;
+      const BASELINE_SMOOTHING = 0.002;
+      const SPIKE_MULTIPLIER = 1.8;
+      const MIN_ABSOLUTE_FLOOR = 20;
+      const SUSTAIN_FRAMES = 2;
+      const BLOW_COOLDOWN_MS = 1000;
 
-let ambientBaseline = 15;
-let sustainCounter = 0;
-let lastBlowTime = 0;
-let lastStatusLogTime = 0;
+      let ambientBaseline = 15;
+      let sustainCounter = 0;
+      let lastBlowTime = 0;
+      let lastStatusLogTime = 0;
 
-async function setupMic() {
-  try {
-    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(micStream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
-    log("✅ マイク準備完了、環境音を学習中...");
-    monitorVolume(analyser);
-  } catch (err) {
-    log("❌ マイクエラー: " + err.message);
-  }
-}
+      async function setupMic() {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(micStream);
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          log("✅ マイク準備完了、環境音を学習中...");
+          monitorVolume(analyser);
+        } catch (err) {
+          log("❌ マイクエラー: " + err.message);
+        }
+      }
 
-function monitorVolume(analyser) {
-  const dataArray = new Uint8Array(analyser.frequencyBinCount);
-  const recentWindow = []; // 最近幾格的音量，用來算滑動平均
-  const WINDOW_SIZE = 5;
+      function monitorVolume(analyser) {
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const recentWindow = [];
+        const WINDOW_SIZE = 5;
 
-  function check() {
-    analyser.getByteFrequencyData(dataArray);
-    const fullAvg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        function check() {
+          analyser.getByteFrequencyData(dataArray);
+          const fullAvg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-    recentWindow.push(fullAvg);
-    if (recentWindow.length > WINDOW_SIZE) recentWindow.shift();
-    const smoothedVol = recentWindow.reduce((a, b) => a + b, 0) / recentWindow.length;
+          recentWindow.push(fullAvg);
+          if (recentWindow.length > WINDOW_SIZE) recentWindow.shift();
+          const smoothedVol = recentWindow.reduce((a, b) => a + b, 0) / recentWindow.length;
 
-    const now = Date.now();
-    const dynamicThreshold = Math.max(ambientBaseline * SPIKE_MULTIPLIER, MIN_ABSOLUTE_FLOOR);
-    const isSpike = smoothedVol > dynamicThreshold;
+          const now = Date.now();
+          const dynamicThreshold = Math.max(ambientBaseline * SPIKE_MULTIPLIER, MIN_ABSOLUTE_FLOOR);
+          const isSpike = smoothedVol > dynamicThreshold;
 
-    if (isSpike) {
-      sustainCounter++;
-    } else {
-      sustainCounter = 0;
-      ambientBaseline = ambientBaseline * (1 - BASELINE_SMOOTHING) + fullAvg * BASELINE_SMOOTHING;
-    }
+          if (isSpike) {
+            sustainCounter++;
+          } else {
+            sustainCounter = 0;
+            ambientBaseline = ambientBaseline * (1 - BASELINE_SMOOTHING) + fullAvg * BASELINE_SMOOTHING;
+          }
 
-    if (now - lastStatusLogTime > 1000) {
-      lastStatusLogTime = now;
-      log("📊 瞬間=" + fullAvg.toFixed(1) + " 平滑=" + smoothedVol.toFixed(1) + " 基準=" + ambientBaseline.toFixed(1) + " 門檻=" + dynamicThreshold.toFixed(1));
-    }
+          if (now - lastStatusLogTime > 1000) {
+            lastStatusLogTime = now;
+            log("📊 瞬間=" + fullAvg.toFixed(1) + " 平滑=" + smoothedVol.toFixed(1) + " 基準=" + ambientBaseline.toFixed(1) + " 門檻=" + dynamicThreshold.toFixed(1));
+          }
 
-    if (sustainCounter >= SUSTAIN_FRAMES && now - lastBlowTime > BLOW_COOLDOWN_MS) {
-      lastBlowTime = now;
-      sustainCounter = 0;
-      onBlowDetected(smoothedVol, ambientBaseline);
-    }
+          if (sustainCounter >= SUSTAIN_FRAMES && now - lastBlowTime > BLOW_COOLDOWN_MS) {
+            lastBlowTime = now;
+            sustainCounter = 0;
+            onBlowDetected(smoothedVol, ambientBaseline);
+          }
 
-    requestAnimationFrame(check);
-  }
-  check();
-}
+          requestAnimationFrame(check);
+        }
+        check();
+      }
 
-function onBlowDetected(vol, baseline) {
-  if (progress >= MAX_PROGRESS && !isRetreating) {
-    log("💨 息を検知！ vol=" + vol.toFixed(1) + " → 吹き飛ばす！");
-    animateRetreat();
-  } else if (!isRetreating) {
-    log("（まだ上限に達していないので無視）");
-  }
-}
+      function onBlowDetected(vol, baseline) {
+        if (progress >= MAX_PROGRESS && !isRetreating) {
+          log("💨 息を検知！ vol=" + vol.toFixed(1) + " → 吹き飛ばす！");
+          animateRetreat();
+        } else if (!isRetreating) {
+          log("（まだ上限に達していないので無視）");
+        }
+      }
 
-function animateRetreat() {
-  isRetreating = true;
-  const startProgress = progress;
-  const startTime = Date.now();
+      function animateRetreat() {
+        isRetreating = true;
+        const startProgress = progress;
+        const startTime = Date.now();
 
-  function step() {
-    const elapsed = Date.now() - startTime;
-    const t = Math.min(elapsed / RETREAT_DURATION_MS, 1);
-    progress = startProgress * (1 - t);
-    applyPose();
+        function step() {
+          const elapsed = Date.now() - startTime;
+          const t = Math.min(elapsed / RETREAT_DURATION_MS, 1);
+          progress = startProgress * (1 - t);
+          applyPose();
 
-    if (t < 1) {
-      requestAnimationFrame(step);
-    } else {
-      progress = 0;
-      applyPose();
-      isRetreating = false;
-      log("🌬️ 吹き飛ばし完了");
-    }
-  }
-  requestAnimationFrame(step);
-}
+          if (t < 1) {
+            requestAnimationFrame(step);
+          } else {
+            progress = 0;
+            applyPose();
+            isRetreating = false;
+            log("🌬️ 吹き飛ばし完了");
+          }
+        }
+        requestAnimationFrame(step);
+      }
 
       document.getElementById("mic-start-btn").addEventListener("click", (e) => {
         setupMic();
