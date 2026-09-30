@@ -223,7 +223,21 @@
   <!-- ===== ここから既存のAR画面 ===== -->
   <button id="mic-start-btn" class="ticket-btn visible">タップしてマイクを許可</button>
 
-  <div id="ar-container"></div>
+  <a-scene id="ar-scene" color-space="sRGB" embedded
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true"
+    mindar-image="imageTargetSrc: targets/targets.mind; autoStart: false;">
+    <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
+    <a-light type="directional" color="#FFF" intensity="0.6" position="1 1 1"></a-light>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity id="target0" mindar-image-target="targetIndex: 0">
+      <a-entity id="rose-wrapper" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+        <a-entity id="rose-normal" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+        <a-entity id="rose-startled" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
+      </a-entity>
+    </a-entity>
+  </a-scene>
 
   <div id="debug-log">起動中...</div>
 
@@ -339,39 +353,31 @@
       "画面に息を吹きかけて花びらを散らそう"
     ]);
 
-    /* ============ AR体験の開始（ここでカメラ・マイクを起動） ============ */
+    /* ============ シーンのログ登録（ページ読み込み時に一度だけ） ============ */
+    const sceneEl = document.getElementById("ar-scene");
+    sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
+    sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
+    sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
+
+    /* ============ AR体験の開始（ここでカメラを起動） ============ */
     function startARExperience() {
       document.getElementById("app-flow").style.display = "none";
 
-      const arContainer = document.getElementById("ar-container");
-      arContainer.innerHTML = `
-    <a-scene id="ar-scene" color-space="sRGB" embedded
-      renderer="colorManagement: true"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: true"
-      mindar-image="imageTargetSrc: targets/targets.mind;">
-      <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
-      <a-light type="directional" color="#FFF" intensity="0.6" position="1 1 1"></a-light>
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-      <a-entity id="target0" mindar-image-target="targetIndex: 0">
-        <a-entity id="rose-wrapper" position="0 0 0" scale="1 1 1" rotation="0 0 0">
-          <a-entity id="rose-normal" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
-          <a-entity id="rose-startled" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
-        </a-entity>
-      </a-entity>
-    </a-scene>
-  `;
-
-      const sceneEl = document.getElementById("ar-scene");
-      sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
-      sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
-      sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
+      // a-scene はページ読み込み時からずっと存在している（autoStart: false で待機中）。
+      // ここで初めてカメラ・トラッキングを起動する。
+      const arSystem = sceneEl.systems["mindar-image-system"];
+      if (arSystem) {
+        arSystem.start();
+      } else {
+        log("❌ mindar-image-system が見つかりません");
+      }
 
       document.getElementById("mic-start-btn").style.display = "block";
-      initGameLogic();
     }
 
     /* ============ 既存のゲームロジック（凍結・接近・息の判定） ============ */
+    /* a-scene が静的にあるので、ページ読み込み時に一度だけ初期化してよい */
+    initGameLogic();
     function initGameLogic() {
       const roseEntity = document.getElementById('rose-wrapper');
       const normalEl = document.getElementById('rose-normal');
