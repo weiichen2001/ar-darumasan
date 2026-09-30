@@ -3,6 +3,7 @@
 
 <head>
   <title>barasama-ar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -220,7 +221,6 @@
   </div>
 
   <!-- ===== ここから既存のAR画面 ===== -->
-  <!-- ===== ここから既存のAR画面 ===== -->
   <button id="mic-start-btn" class="ticket-btn visible">タップしてマイクを許可</button>
 
   <div id="ar-container"></div>
@@ -243,41 +243,13 @@
       let lineIndex = 0;
       let charIndex = 0;
       el.textContent = "";
-      const currentLineEl = document.createElement("div");
-      el.appendChild(currentLineEl);
+      let currentLineEl2 = document.createElement("div");
+      el.appendChild(currentLineEl2);
 
-      function step() {
-        if (lineIndex >= lines.length) {
-          if (onDone) onDone();
-          return;
-        }
-        const line = lines[lineIndex];
-        if (charIndex < line.length) {
-          currentLineEl.textContent += line[charIndex];
-          charIndex++;
-          setTimeout(step, charDelay);
-        } else {
-          lineIndex++;
-          charIndex = 0;
-          if (lineIndex < lines.length) {
-            const nextLineEl = document.createElement("div");
-            el.appendChild(nextLineEl);
-            currentLineElRef(nextLineEl);
-            setTimeout(step, lineDelay);
-          } else {
-            if (onDone) onDone();
-          }
-        }
-      }
-      function currentLineElRef(newEl) {
-        currentLineEl2 = newEl;
-      }
-      let currentLineEl2 = currentLineEl;
-      // 簡易版：直接書き換え
       function stepFixed() {
         if (lineIndex >= lines.length) { if (onDone) onDone(); return; }
         const line = lines[lineIndex];
-        if (charIndex === 0) {
+        if (charIndex === 0 && lineIndex > 0) {
           currentLineEl2 = document.createElement("div");
           el.appendChild(currentLineEl2);
         }
@@ -295,7 +267,6 @@
           }
         }
       }
-      el.textContent = "";
       stepFixed();
     }
 
@@ -312,6 +283,7 @@
     document.querySelectorAll(".ticket-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const next = btn.dataset.next;
+        if (!next) return; // マイクボタンには data-next が無いのでここで抜ける
         if (next === "AR_START") {
           startARExperience();
         } else {
