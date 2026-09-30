@@ -1,549 +1,580 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>barasama-ar</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Shippori+Mincho:wght@500&display=swap" rel="stylesheet">
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #2a1410;
-      }
-      a-scene {
-        width: 100vw;
-        height: 100vh;
-        position: fixed;
-        top: 0;
-        left: 0;
-      }
-      #debug-log {
-        position: fixed; bottom: 0; left: 0; right: 0;
-        max-height: 30vh; overflow-y: auto;
-        background: rgba(0,0,0,0.8); color: #0f0;
-        font-size: 12px; padding: 8px; z-index: 9999;
-        white-space: pre-wrap; font-family: monospace;
-      }
-      #mic-start-btn {
-        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-        z-index: 10000; padding: 12px 20px; font-size: 16px;
-        background: #E091A8; color: white; border: none; border-radius: 8px;
-        display: none;
-      }
 
-      /* ===== イントロ画面まわり ===== */
-      #app-flow {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        max-width: 480px;
-        margin: 0 auto;
-        z-index: 20000;
-        overflow: hidden;
-      }
-      .app-screen {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: url('assets/home-bg.png');
-        background-size: cover;
-        background-position: center;
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        box-sizing: border-box;
-      }
-      .app-screen.active {
-        display: flex;
-      }
+<head>
+  <title>barasama-ar</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Shippori+Mincho:wght@500&display=swap"
+    rel="stylesheet">
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
 
-      /* ホーム画面 */
-      #screen-home {
-        justify-content: flex-end;
-        padding-bottom: 110px;
-      }
-      #home-text {
-        color: #fff;
-        font-family: 'Shippori Mincho', serif;
-        font-size: 16px;
-        line-height: 1.9;
-        text-align: left;
-        padding: 0 32px;
-        margin-bottom: 24px;
-        min-height: 230px;
-        text-shadow: 0 1px 6px rgba(0,0,0,0.5);
-      }
+    a-scene {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
 
-      /* 説明画面（共通） */
-      .instruction-screen {
-        justify-content: flex-start;
-        padding-top: 60px;
-      }
-      .instruction-title {
-        font-family: 'Kaisei Decol', serif;
-        font-weight: 700;
-        font-size: 30px;
-        color: #402518;
-        text-shadow: 0 6px 4px rgba(255,255,255,0.9);
-        margin-bottom: 24px;
-      }
-      .instruction-frame {
-        width: 84%;
-        max-width: 360px;
-        border-radius: 4px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-      }
-      .instruction-caption {
-        color: #fff;
-        font-family: 'Shippori Mincho', serif;
-        font-size: 18px;
-        line-height: 1.7;
-        text-align: center;
-        margin-top: 28px;
-        padding: 0 20px;
-        min-height: 60px;
-        text-shadow: 0 1px 6px rgba(0,0,0,0.5);
-      }
+    #debug-log {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-height: 30vh;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.8);
+      color: #0f0;
+      font-size: 12px;
+      padding: 8px;
+      z-index: 9999;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
 
-      /* チケット風ボタン（共通） */
-      .ticket-btn {
-        position: absolute;
-        bottom: 60px;
-        left: 50%;
+    #mic-start-btn {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: none;
+    }
+
+    /* ===== イントロ画面まわり ===== */
+    #app-flow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      z-index: 20000;
+      overflow: hidden;
+    }
+
+    .app-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('assets/home-bg.png');
+      background-size: cover;
+      background-position: center;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    .app-screen.active {
+      display: flex;
+    }
+
+    /* ホーム画面 */
+    #screen-home {
+      justify-content: flex-end;
+      padding-bottom: 110px;
+    }
+
+    #home-text {
+      color: #fff;
+      font-family: 'Shippori Mincho', serif;
+      font-size: 16px;
+      line-height: 1.9;
+      text-align: left;
+      padding: 0 32px;
+      margin-bottom: 24px;
+      min-height: 230px;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 説明画面（共通） */
+    .instruction-screen {
+      justify-content: flex-start;
+      padding-top: 60px;
+    }
+
+    .instruction-title {
+      font-family: 'Kaisei Decol', serif;
+      font-weight: 700;
+      font-size: 30px;
+      color: #402518;
+      text-shadow: 0 6px 4px rgba(255, 255, 255, 0.9);
+      margin-bottom: 24px;
+    }
+
+    .instruction-frame {
+      width: 84%;
+      max-width: 360px;
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .instruction-caption {
+      color: #fff;
+      font-family: 'Shippori Mincho', serif;
+      font-size: 18px;
+      line-height: 1.7;
+      text-align: center;
+      margin-top: 28px;
+      padding: 0 20px;
+      min-height: 60px;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    /* チケット風ボタン（共通） */
+    .ticket-btn {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%) scale(1);
+      width: 76%;
+      max-width: 294px;
+      background-image: url('assets/ticket-button.png');
+      background-size: 100% 100%;
+      border: none;
+      cursor: pointer;
+      padding: 18px 0;
+      font-family: 'Kaisei Decol', serif;
+      font-size: 22px;
+      color: #1a1a1a;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.15s ease;
+      animation: ticket-breathe 2.4s ease-in-out infinite;
+    }
+
+    .ticket-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .ticket-btn:active {
+      transform: translateX(-50%) scale(0.95);
+    }
+
+    @keyframes ticket-breathe {
+
+      0%,
+      100% {
         transform: translateX(-50%) scale(1);
-        width: 76%;
-        max-width: 294px;
-        background-image: url('assets/ticket-button.png');
-        background-size: 100% 100%;
-        border: none;
-        cursor: pointer;
-        padding: 18px 0;
-        font-family: 'Kaisei Decol', serif;
-        font-size: 22px;
-        color: #1a1a1a;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.5s ease, transform 0.15s ease;
-        animation: ticket-breathe 2.4s ease-in-out infinite;
       }
-      .ticket-btn.visible {
-        opacity: 1;
-        pointer-events: auto;
+
+      50% {
+        transform: translateX(-50%) scale(1.03);
       }
-      .ticket-btn:active {
-        transform: translateX(-50%) scale(0.95);
-      }
-      @keyframes ticket-breathe {
-        0%, 100% { transform: translateX(-50%) scale(1); }
-        50% { transform: translateX(-50%) scale(1.03); }
-      }
-      .ticket-btn.visible:active {
-        animation: none;
-      }
-    </style>
-  </head>
-  <body style="margin:0;">
+    }
 
-    <!-- ===== ①〜④ イントロ／説明フロー ===== -->
-    <div id="app-flow">
+    .ticket-btn.visible:active {
+      animation: none;
+    }
+  </style>
+</head>
 
-      <div id="screen-home" class="app-screen active">
-        <div id="home-text"></div>
-        <button class="ticket-btn" id="btn-home" data-next="screen-step1">ようこそ</button>
-      </div>
+<body style="margin:0;">
 
-      <div id="screen-step1" class="app-screen instruction-screen">
-        <div class="instruction-title">[ あそびかた }</div> <!-- ← ここの "}" は多分打ち間違い、直すなら "]" に -->
-        <img class="instruction-frame" src="assets/step1.png" alt="">
-        <div class="instruction-caption" id="step1-text"></div>
-        <button class="ticket-btn" id="btn-step1" data-next="screen-step2">次のステップ</button>
-      </div>
+  <!-- ===== ①〜④ イントロ／説明フロー ===== -->
+  <div id="app-flow">
 
-      <div id="screen-step2" class="app-screen instruction-screen">
-        <div class="instruction-title">[ あそびかた }</div>
-        <img class="instruction-frame" src="assets/step2.png" alt="">
-        <div class="instruction-caption" id="step2-text"></div>
-        <button class="ticket-btn" id="btn-step2" data-next="screen-step3">次のステップ</button>
-      </div>
-
-      <div id="screen-step3" class="app-screen instruction-screen">
-        <div class="instruction-title">[ あそびかた }</div>
-        <img class="instruction-frame" src="assets/step3.png" alt="">
-        <div class="instruction-caption" id="step3-text"></div>
-        <button class="ticket-btn" id="btn-step3" data-next="AR_START">AR体験をはじめる</button>
-      </div>
-
+    <div id="screen-home" class="app-screen active">
+      <div id="home-text"></div>
+      <button class="ticket-btn" id="btn-home" data-next="screen-step1">ようこそ</button>
     </div>
 
-    <!-- ===== ここから既存のAR画面 ===== -->
-    <button id="mic-start-btn">タップしてマイクを許可</button>
+    <div id="screen-step1" class="app-screen instruction-screen">
+      <div class="instruction-title">[ あそびかた }</div> <!-- ← ここの "}" は多分打ち間違い、直すなら "]" に -->
+      <img class="instruction-frame" src="assets/step1.png" alt="">
+      <div class="instruction-caption" id="step1-text"></div>
+      <button class="ticket-btn" id="btn-step1" data-next="screen-step2">次のステップ</button>
+    </div>
 
-    <a-scene
-      id="ar-scene"
-      color-space="sRGB"
-      embedded
-      renderer="colorManagement: true"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: true"
-    >
-      <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
-      <a-light type="directional" color="#FFF" intensity="0.6" position="1 1 1"></a-light>
+    <div id="screen-step2" class="app-screen instruction-screen">
+      <div class="instruction-title">[ あそびかた }</div>
+      <img class="instruction-frame" src="assets/step2.png" alt="">
+      <div class="instruction-caption" id="step2-text"></div>
+      <button class="ticket-btn" id="btn-step2" data-next="screen-step3">次のステップ</button>
+    </div>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <div id="screen-step3" class="app-screen instruction-screen">
+      <div class="instruction-title">[ あそびかた }</div>
+      <img class="instruction-frame" src="assets/step3.png" alt="">
+      <div class="instruction-caption" id="step3-text"></div>
+      <button class="ticket-btn" id="btn-step3" data-next="AR_START">AR体験をはじめる</button>
+    </div>
 
-      <a-entity id="target0" mindar-image-target="targetIndex: 0">
-        <a-entity id="rose-wrapper" position="0 0 0" scale="1 1 1" rotation="0 0 0">
-          <a-entity id="rose-normal" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
-          <a-entity id="rose-startled" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
-        </a-entity>
+  </div>
+
+  <!-- ===== ここから既存のAR画面 ===== -->
+  <button id="mic-start-btn">タップしてマイクを許可</button>
+
+  <a-scene id="ar-scene" color-space="sRGB" embedded renderer="colorManagement: true" vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true">
+    <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
+    <a-light type="directional" color="#FFF" intensity="0.6" position="1 1 1"></a-light>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity id="target0" mindar-image-target="targetIndex: 0">
+      <a-entity id="rose-wrapper" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+        <a-entity id="rose-normal" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+        <a-entity id="rose-startled" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
       </a-entity>
-    </a-scene>
+    </a-entity>
+  </a-scene>
 
-    <div id="debug-log">起動中...</div>
+  <div id="debug-log">起動中...</div>
 
-    <script>
-      const logEl = document.getElementById("debug-log");
-      function log(msg) {
-        logEl.textContent += "\n" + msg;
-        logEl.scrollTop = logEl.scrollHeight;
-      }
+  <script>
+    const logEl = document.getElementById("debug-log");
+    function log(msg) {
+      logEl.textContent += "\n" + msg;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
 
-      window.onerror = function (msg, url, line) {
-        log("❌ エラー: " + msg + " (行:" + line + ")");
-      };
+    window.onerror = function (msg, url, line) {
+      log("❌ エラー: " + msg + " (行:" + line + ")");
+    };
 
-      /* ============ タイプライター演出 ============ */
-      function typeWriter(el, lines, charDelay, lineDelay, onDone) {
-        let lineIndex = 0;
-        let charIndex = 0;
-        el.textContent = "";
-        const currentLineEl = document.createElement("div");
-        el.appendChild(currentLineEl);
+    /* ============ タイプライター演出 ============ */
+    function typeWriter(el, lines, charDelay, lineDelay, onDone) {
+      let lineIndex = 0;
+      let charIndex = 0;
+      el.textContent = "";
+      const currentLineEl = document.createElement("div");
+      el.appendChild(currentLineEl);
 
-        function step() {
-          if (lineIndex >= lines.length) {
+      function step() {
+        if (lineIndex >= lines.length) {
+          if (onDone) onDone();
+          return;
+        }
+        const line = lines[lineIndex];
+        if (charIndex < line.length) {
+          currentLineEl.textContent += line[charIndex];
+          charIndex++;
+          setTimeout(step, charDelay);
+        } else {
+          lineIndex++;
+          charIndex = 0;
+          if (lineIndex < lines.length) {
+            const nextLineEl = document.createElement("div");
+            el.appendChild(nextLineEl);
+            currentLineElRef(nextLineEl);
+            setTimeout(step, lineDelay);
+          } else {
             if (onDone) onDone();
-            return;
-          }
-          const line = lines[lineIndex];
-          if (charIndex < line.length) {
-            currentLineEl.textContent += line[charIndex];
-            charIndex++;
-            setTimeout(step, charDelay);
-          } else {
-            lineIndex++;
-            charIndex = 0;
-            if (lineIndex < lines.length) {
-              const nextLineEl = document.createElement("div");
-              el.appendChild(nextLineEl);
-              currentLineElRef(nextLineEl);
-              setTimeout(step, lineDelay);
-            } else {
-              if (onDone) onDone();
-            }
           }
         }
-        function currentLineElRef(newEl) {
-          currentLineEl2 = newEl;
+      }
+      function currentLineElRef(newEl) {
+        currentLineEl2 = newEl;
+      }
+      let currentLineEl2 = currentLineEl;
+      // 簡易版：直接書き換え
+      function stepFixed() {
+        if (lineIndex >= lines.length) { if (onDone) onDone(); return; }
+        const line = lines[lineIndex];
+        if (charIndex === 0) {
+          currentLineEl2 = document.createElement("div");
+          el.appendChild(currentLineEl2);
         }
-        let currentLineEl2 = currentLineEl;
-        // 簡易版：直接書き換え
-        function stepFixed() {
-          if (lineIndex >= lines.length) { if (onDone) onDone(); return; }
-          const line = lines[lineIndex];
-          if (charIndex === 0) {
-            currentLineEl2 = document.createElement("div");
-            el.appendChild(currentLineEl2);
-          }
-          if (charIndex < line.length) {
-            currentLineEl2.textContent += line[charIndex];
-            charIndex++;
-            setTimeout(stepFixed, charDelay);
+        if (charIndex < line.length) {
+          currentLineEl2.textContent += line[charIndex];
+          charIndex++;
+          setTimeout(stepFixed, charDelay);
+        } else {
+          lineIndex++;
+          charIndex = 0;
+          if (lineIndex < lines.length) {
+            setTimeout(stepFixed, lineDelay);
           } else {
-            lineIndex++;
-            charIndex = 0;
-            if (lineIndex < lines.length) {
-              setTimeout(stepFixed, lineDelay);
-            } else {
-              if (onDone) onDone();
-            }
+            if (onDone) onDone();
           }
         }
-        el.textContent = "";
-        stepFixed();
+      }
+      el.textContent = "";
+      stepFixed();
+    }
+
+    function showButton(btn) {
+      btn.classList.add("visible");
+    }
+
+    /* ============ 画面遷移 ============ */
+    function goToScreen(id) {
+      document.querySelectorAll(".app-screen").forEach(s => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    document.querySelectorAll(".ticket-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const next = btn.dataset.next;
+        if (next === "AR_START") {
+          startARExperience();
+        } else {
+          goToScreen(next);
+        }
+      });
+    });
+
+    /* ============ 各画面のテキスト ============ */
+    typeWriter(
+      document.getElementById("home-text"),
+      [
+        "靱公園のバラ園に住む、",
+        "一輪のバラの精霊。",
+        "　",
+        "年に二度だけ訪れる開花の季節を、",
+        "彼女は自分の「公演期間」だと思い込んでいる。",
+        "　",
+        "誰よりもかまってほしがりな、",
+        "自己愛たっぷりのスター気質。",
+        "　",
+        "その名も——バラ様。"
+      ],
+      45, 250,
+      () => showButton(document.getElementById("btn-home"))
+    );
+
+    function setupStepTyping(screenId, textElId, btnId, lines) {
+      let typed = false;
+      const observer = new MutationObserver(() => {
+        if (document.getElementById(screenId).classList.contains("active") && !typed) {
+          typed = true;
+          typeWriter(
+            document.getElementById(textElId),
+            lines, 45, 250,
+            () => showButton(document.getElementById(btnId))
+          );
+        }
+      });
+      observer.observe(document.getElementById(screenId), { attributes: true, attributeFilter: ["class"] });
+    }
+
+    setupStepTyping("screen-step1", "step1-text", "btn-step1", [
+      "カメラをマーカーに向けて、",
+      "バラ様が出る前にお待ちください。"
+    ]);
+    setupStepTyping("screen-step2", "step2-text", "btn-step2", [
+      "目を離すと、",
+      "そっと距離を詰めてくる"
+    ]);
+    setupStepTyping("screen-step3", "step3-text", "btn-step3", [
+      "近づかれすぎたら、",
+      "画面に息を吹きかけて花びらを散らそう"
+    ]);
+
+    /* ============ AR体験の開始（ここでカメラ・マイクを起動） ============ */
+    function startARExperience() {
+      document.getElementById("app-flow").style.display = "none";
+
+      const sceneEl = document.getElementById("ar-scene");
+      sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
+      sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
+      sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
+
+      // ここで初めてMindARのカメラを起動する
+      sceneEl.setAttribute("mindar-image", "imageTargetSrc: targets/targets.mind;");
+
+      document.getElementById("mic-start-btn").style.display = "block";
+      initGameLogic();
+    }
+
+    /* ============ 既存のゲームロジック（凍結・接近・息の判定） ============ */
+    function initGameLogic() {
+      const roseEntity = document.getElementById('rose-wrapper');
+      const normalEl = document.getElementById('rose-normal');
+      const startledEl = document.getElementById('rose-startled');
+      const target0 = document.getElementById("target0");
+
+      const SPEED = 0.5;
+      const MAX_PROGRESS = 5;
+      const BASE_SCALE = 1;
+      const MAX_SCALE = 4;
+      const BASE_Y = -0.1;
+      const Y_PER_PROGRESS = -0.6;
+      const MIN_LOST_MS = 400;
+
+      const STARTLE_FLASH_MS = 220;
+      const TILT_ANGLE = 18;
+
+      let progress = 0;
+      let lostAt = null;
+      let isRetreating = false;
+      let isStartling = false;
+
+      function applyPose() {
+        const ratio = progress / MAX_PROGRESS;
+        const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
+        const yValue = BASE_Y + progress * Y_PER_PROGRESS;
+        roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
+        roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
       }
 
-      function showButton(btn) {
-        btn.classList.add("visible");
-      }
+      function flashStartled() {
+        isStartling = true;
+        startledEl.setAttribute('visible', true);
+        normalEl.setAttribute('visible', false);
 
-      /* ============ 画面遷移 ============ */
-      function goToScreen(id) {
-        document.querySelectorAll(".app-screen").forEach(s => s.classList.remove("active"));
-        document.getElementById(id).classList.add("active");
-      }
-
-      document.querySelectorAll(".ticket-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const next = btn.dataset.next;
-          if (next === "AR_START") {
-            startARExperience();
+        const startTime = Date.now();
+        function tiltStep() {
+          const elapsed = Date.now() - startTime;
+          const t = Math.min(elapsed / STARTLE_FLASH_MS, 1);
+          const wobble = Math.sin(t * Math.PI) * TILT_ANGLE;
+          roseEntity.setAttribute('rotation', { x: 0, y: 0, z: wobble });
+          if (t < 1) {
+            requestAnimationFrame(tiltStep);
           } else {
-            goToScreen(next);
+            roseEntity.setAttribute('rotation', { x: 0, y: 0, z: 0 });
+            startledEl.setAttribute('visible', false);
+            normalEl.setAttribute('visible', true);
+            isStartling = false;
           }
-        });
+        }
+        requestAnimationFrame(tiltStep);
+      }
+
+      target0.addEventListener("targetFound", () => {
+        if (isRetreating) return;
+        if (lostAt !== null) {
+          const lostDurationMs = Date.now() - lostAt;
+          if (lostDurationMs >= MIN_LOST_MS) {
+            const elapsedSec = lostDurationMs / 1000;
+            progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
+            flashStartled();
+          } else {
+            log("（ノイズ判定、無視）" + lostDurationMs + "ms");
+          }
+          lostAt = null;
+        }
+        log("🎯 発見！ progress=" + progress.toFixed(2));
+        applyPose();
       });
 
-      /* ============ 各画面のテキスト ============ */
-      typeWriter(
-        document.getElementById("home-text"),
-        [
-          "靱公園のバラ園に住む、",
-          "一輪のバラの精霊。",
-          "　",
-          "年に二度だけ訪れる開花の季節を、",
-          "彼女は自分の「公演期間」だと思い込んでいる。",
-          "　",
-          "誰よりもかまってほしがりな、",
-          "自己愛たっぷりのスター気質。",
-          "　",
-          "その名も——バラ様。"
-        ],
-        45, 250,
-        () => showButton(document.getElementById("btn-home"))
-      );
+      target0.addEventListener("targetLost", () => {
+        lostAt = Date.now();
+      });
 
-      function setupStepTyping(screenId, textElId, btnId, lines) {
-        let typed = false;
-        const observer = new MutationObserver(() => {
-          if (document.getElementById(screenId).classList.contains("active") && !typed) {
-            typed = true;
-            typeWriter(
-              document.getElementById(textElId),
-              lines, 45, 250,
-              () => showButton(document.getElementById(btnId))
-            );
-          }
-        });
-        observer.observe(document.getElementById(screenId), { attributes: true, attributeFilter: ["class"] });
+      const RETREAT_DURATION_MS = 800;
+      const BASELINE_SMOOTHING = 0.002;
+      const SPIKE_MULTIPLIER = 1.8;
+      const MIN_ABSOLUTE_FLOOR = 20;
+      const SUSTAIN_FRAMES = 2;
+      const BLOW_COOLDOWN_MS = 1000;
+
+      let ambientBaseline = 15;
+      let sustainCounter = 0;
+      let lastBlowTime = 0;
+      let lastStatusLogTime = 0;
+
+      async function setupMic() {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(micStream);
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          log("✅ マイク準備完了、環境音を学習中...");
+          monitorVolume(analyser);
+        } catch (err) {
+          log("❌ マイクエラー: " + err.message);
+        }
       }
 
-      setupStepTyping("screen-step1", "step1-text", "btn-step1", [
-        "カメラをマーカーに向けて、",
-        "バラ様が出る前にお待ちください。"
-      ]);
-      setupStepTyping("screen-step2", "step2-text", "btn-step2", [
-        "目を離すと、",
-        "そっと距離を詰めてくる"
-      ]);
-      setupStepTyping("screen-step3", "step3-text", "btn-step3", [
-        "近づかれすぎたら、",
-        "画面に息を吹きかけて花びらを散らそう"
-      ]);
+      function monitorVolume(analyser) {
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const recentWindow = [];
+        const WINDOW_SIZE = 5;
 
-      /* ============ AR体験の開始（ここでカメラ・マイクを起動） ============ */
-      function startARExperience() {
-        document.getElementById("app-flow").style.display = "none";
+        function check() {
+          analyser.getByteFrequencyData(dataArray);
+          const fullAvg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-        const sceneEl = document.getElementById("ar-scene");
-        sceneEl.addEventListener("loaded", () => log("✅ シーン読み込み完了"));
-        sceneEl.addEventListener("arReady", () => log("✅ MindAR準備完了"));
-        sceneEl.addEventListener("arError", (e) => log("❌ MindARエラー: " + JSON.stringify(e.detail)));
+          recentWindow.push(fullAvg);
+          if (recentWindow.length > WINDOW_SIZE) recentWindow.shift();
+          const smoothedVol = recentWindow.reduce((a, b) => a + b, 0) / recentWindow.length;
 
-        // ここで初めてMindARのカメラを起動する
-        sceneEl.setAttribute("mindar-image", "imageTargetSrc: targets/targets.mind;");
+          const now = Date.now();
+          const dynamicThreshold = Math.max(ambientBaseline * SPIKE_MULTIPLIER, MIN_ABSOLUTE_FLOOR);
+          const isSpike = smoothedVol > dynamicThreshold;
 
-        document.getElementById("mic-start-btn").style.display = "block";
-        initGameLogic();
+          if (isSpike) {
+            sustainCounter++;
+          } else {
+            sustainCounter = 0;
+            ambientBaseline = ambientBaseline * (1 - BASELINE_SMOOTHING) + fullAvg * BASELINE_SMOOTHING;
+          }
+
+          if (now - lastStatusLogTime > 1000) {
+            lastStatusLogTime = now;
+            log("📊 瞬間=" + fullAvg.toFixed(1) + " 平滑=" + smoothedVol.toFixed(1) + " 基準=" + ambientBaseline.toFixed(1) + " 門檻=" + dynamicThreshold.toFixed(1));
+          }
+
+          if (sustainCounter >= SUSTAIN_FRAMES && now - lastBlowTime > BLOW_COOLDOWN_MS) {
+            lastBlowTime = now;
+            sustainCounter = 0;
+            onBlowDetected(smoothedVol, ambientBaseline);
+          }
+
+          requestAnimationFrame(check);
+        }
+        check();
       }
 
-      /* ============ 既存のゲームロジック（凍結・接近・息の判定） ============ */
-      function initGameLogic() {
-        const roseEntity = document.getElementById('rose-wrapper');
-        const normalEl = document.getElementById('rose-normal');
-        const startledEl = document.getElementById('rose-startled');
-        const target0 = document.getElementById("target0");
-
-        const SPEED = 0.5;
-        const MAX_PROGRESS = 5;
-        const BASE_SCALE = 1;
-        const MAX_SCALE = 4;
-        const BASE_Y = -0.1;
-        const Y_PER_PROGRESS = -0.6;
-        const MIN_LOST_MS = 400;
-
-        const STARTLE_FLASH_MS = 220;
-        const TILT_ANGLE = 18;
-
-        let progress = 0;
-        let lostAt = null;
-        let isRetreating = false;
-        let isStartling = false;
-
-        function applyPose() {
-          const ratio = progress / MAX_PROGRESS;
-          const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
-          const yValue = BASE_Y + progress * Y_PER_PROGRESS;
-          roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
-          roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
+      function onBlowDetected(vol, baseline) {
+        if (progress >= MAX_PROGRESS && !isRetreating) {
+          log("💨 息を検知！ vol=" + vol.toFixed(1) + " → 吹き飛ばす！");
+          animateRetreat();
+        } else if (!isRetreating) {
+          log("（まだ上限に達していないので無視）");
         }
+      }
 
-        function flashStartled() {
-          isStartling = true;
-          startledEl.setAttribute('visible', true);
-          normalEl.setAttribute('visible', false);
+      function animateRetreat() {
+        isRetreating = true;
+        const startProgress = progress;
+        const startTime = Date.now();
 
-          const startTime = Date.now();
-          function tiltStep() {
-            const elapsed = Date.now() - startTime;
-            const t = Math.min(elapsed / STARTLE_FLASH_MS, 1);
-            const wobble = Math.sin(t * Math.PI) * TILT_ANGLE;
-            roseEntity.setAttribute('rotation', { x: 0, y: 0, z: wobble });
-            if (t < 1) {
-              requestAnimationFrame(tiltStep);
-            } else {
-              roseEntity.setAttribute('rotation', { x: 0, y: 0, z: 0 });
-              startledEl.setAttribute('visible', false);
-              normalEl.setAttribute('visible', true);
-              isStartling = false;
-            }
-          }
-          requestAnimationFrame(tiltStep);
-        }
-
-        target0.addEventListener("targetFound", () => {
-          if (isRetreating) return;
-          if (lostAt !== null) {
-            const lostDurationMs = Date.now() - lostAt;
-            if (lostDurationMs >= MIN_LOST_MS) {
-              const elapsedSec = lostDurationMs / 1000;
-              progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
-              flashStartled();
-            } else {
-              log("（ノイズ判定、無視）" + lostDurationMs + "ms");
-            }
-            lostAt = null;
-          }
-          log("🎯 発見！ progress=" + progress.toFixed(2));
+        function step() {
+          const elapsed = Date.now() - startTime;
+          const t = Math.min(elapsed / RETREAT_DURATION_MS, 1);
+          progress = startProgress * (1 - t);
           applyPose();
-        });
 
-        target0.addEventListener("targetLost", () => {
-          lostAt = Date.now();
-        });
-
-        const RETREAT_DURATION_MS = 800;
-        const BASELINE_SMOOTHING = 0.002;
-        const SPIKE_MULTIPLIER = 1.8;
-        const MIN_ABSOLUTE_FLOOR = 20;
-        const SUSTAIN_FRAMES = 2;
-        const BLOW_COOLDOWN_MS = 1000;
-
-        let ambientBaseline = 15;
-        let sustainCounter = 0;
-        let lastBlowTime = 0;
-        let lastStatusLogTime = 0;
-
-        async function setupMic() {
-          try {
-            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioContext.createMediaStreamSource(micStream);
-            const analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-            log("✅ マイク準備完了、環境音を学習中...");
-            monitorVolume(analyser);
-          } catch (err) {
-            log("❌ マイクエラー: " + err.message);
-          }
-        }
-
-        function monitorVolume(analyser) {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          const recentWindow = [];
-          const WINDOW_SIZE = 5;
-
-          function check() {
-            analyser.getByteFrequencyData(dataArray);
-            const fullAvg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-            recentWindow.push(fullAvg);
-            if (recentWindow.length > WINDOW_SIZE) recentWindow.shift();
-            const smoothedVol = recentWindow.reduce((a, b) => a + b, 0) / recentWindow.length;
-
-            const now = Date.now();
-            const dynamicThreshold = Math.max(ambientBaseline * SPIKE_MULTIPLIER, MIN_ABSOLUTE_FLOOR);
-            const isSpike = smoothedVol > dynamicThreshold;
-
-            if (isSpike) {
-              sustainCounter++;
-            } else {
-              sustainCounter = 0;
-              ambientBaseline = ambientBaseline * (1 - BASELINE_SMOOTHING) + fullAvg * BASELINE_SMOOTHING;
-            }
-
-            if (now - lastStatusLogTime > 1000) {
-              lastStatusLogTime = now;
-              log("📊 瞬間=" + fullAvg.toFixed(1) + " 平滑=" + smoothedVol.toFixed(1) + " 基準=" + ambientBaseline.toFixed(1) + " 門檻=" + dynamicThreshold.toFixed(1));
-            }
-
-            if (sustainCounter >= SUSTAIN_FRAMES && now - lastBlowTime > BLOW_COOLDOWN_MS) {
-              lastBlowTime = now;
-              sustainCounter = 0;
-              onBlowDetected(smoothedVol, ambientBaseline);
-            }
-
-            requestAnimationFrame(check);
-          }
-          check();
-        }
-
-        function onBlowDetected(vol, baseline) {
-          if (progress >= MAX_PROGRESS && !isRetreating) {
-            log("💨 息を検知！ vol=" + vol.toFixed(1) + " → 吹き飛ばす！");
-            animateRetreat();
-          } else if (!isRetreating) {
-            log("（まだ上限に達していないので無視）");
-          }
-        }
-
-        function animateRetreat() {
-          isRetreating = true;
-          const startProgress = progress;
-          const startTime = Date.now();
-
-          function step() {
-            const elapsed = Date.now() - startTime;
-            const t = Math.min(elapsed / RETREAT_DURATION_MS, 1);
-            progress = startProgress * (1 - t);
+          if (t < 1) {
+            requestAnimationFrame(step);
+          } else {
+            progress = 0;
             applyPose();
-
-            if (t < 1) {
-              requestAnimationFrame(step);
-            } else {
-              progress = 0;
-              applyPose();
-              isRetreating = false;
-              log("🌬️ 吹き飛ばし完了");
-            }
+            isRetreating = false;
+            log("🌬️ 吹き飛ばし完了");
           }
-          requestAnimationFrame(step);
         }
-
-        document.getElementById("mic-start-btn").addEventListener("click", (e) => {
-          setupMic();
-          e.target.style.display = "none";
-        });
+        requestAnimationFrame(step);
       }
-    </script>
-  </body>
+
+      document.getElementById("mic-start-btn").addEventListener("click", (e) => {
+        setupMic();
+        e.target.style.display = "none";
+      });
+    }
+  </script>
+</body>
+
 </html>
