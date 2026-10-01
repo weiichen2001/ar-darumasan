@@ -45,16 +45,6 @@
       font-family: monospace;
     }
 
-    #mic-start-btn {
-      position: fixed;
-      top: 24px;
-      bottom: auto;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10000;
-      display: none;
-    }
-
     /* ===== イントロ画面まわり ===== */
     #app-flow {
       position: fixed;
@@ -222,7 +212,7 @@
   </div>
 
   <!-- ===== ここから既存のAR画面 ===== -->
-  <button id="mic-start-btn" class="ticket-btn visible">タップしてマイクを許可</button>
+  <button id="blow-btn" class="ticket-btn">吹き飛ばす</button>
 
   <a-scene id="ar-scene" color-space="sRGB" embedded
     renderer="colorManagement: true"
@@ -298,7 +288,7 @@
     document.querySelectorAll(".ticket-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const next = btn.dataset.next;
-        if (!next) return; // マイクボタンには data-next が無いのでここで抜ける
+        if (!next) return; // blow-btn には data-next が無いのでここで抜ける（専用のクリック処理は initGameLogic 内）
         if (next === "AR_START") {
           startARExperience();
         } else {
@@ -372,8 +362,6 @@
       } else {
         log("❌ mindar-image-system が見つかりません");
       }
-
-      document.getElementById("mic-start-btn").style.display = "block";
     }
 
     /* ============ 既存のゲームロジック（凍結・接近・息の判定） ============ */
@@ -432,6 +420,16 @@
         requestAnimationFrame(tiltStep);
       }
 
+      const blowBtn = document.getElementById("blow-btn");
+
+      function updateBlowButton() {
+        if (progress >= MAX_PROGRESS && !isRetreating) {
+          blowBtn.classList.add("visible");
+        } else {
+          blowBtn.classList.remove("visible");
+        }
+      }
+
       target0.addEventListener("targetFound", () => {
         if (isRetreating) return;
         if (lostAt !== null) {
@@ -447,6 +445,7 @@
         }
         log("🎯 発見！ progress=" + progress.toFixed(2));
         applyPose();
+        updateBlowButton();
       });
 
       target0.addEventListener("targetLost", () => {
@@ -454,83 +453,10 @@
       });
 
       const RETREAT_DURATION_MS = 800;
-      const BASELINE_SMOOTHING = 0.002;
-      const SPIKE_MULTIPLIER = 1.8;
-      const MIN_ABSOLUTE_FLOOR = 20;
-      const SUSTAIN_FRAMES = 2;
-      const BLOW_COOLDOWN_MS = 1000;
-
-      let ambientBaseline = 15;
-      let sustainCounter = 0;
-      let lastBlowTime = 0;
-      let lastStatusLogTime = 0;
-
-      async function setupMic() {
-        try {
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const source = audioContext.createMediaStreamSource(micStream);
-          const analyser = audioContext.createAnalyser();
-          analyser.fftSize = 256;
-          source.connect(analyser);
-          log("✅ マイク準備完了、環境音を学習中...");
-          monitorVolume(analyser);
-        } catch (err) {
-          log("❌ マイクエラー: " + err.message);
-        }
-      }
-
-      function monitorVolume(analyser) {
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const recentWindow = [];
-        const WINDOW_SIZE = 5;
-
-        function check() {
-          analyser.getByteFrequencyData(dataArray);
-          const fullAvg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-          recentWindow.push(fullAvg);
-          if (recentWindow.length > WINDOW_SIZE) recentWindow.shift();
-          const smoothedVol = recentWindow.reduce((a, b) => a + b, 0) / recentWindow.length;
-
-          const now = Date.now();
-          const dynamicThreshold = Math.max(ambientBaseline * SPIKE_MULTIPLIER, MIN_ABSOLUTE_FLOOR);
-          const isSpike = smoothedVol > dynamicThreshold;
-
-          if (isSpike) {
-            sustainCounter++;
-          } else {
-            sustainCounter = 0;
-            ambientBaseline = ambientBaseline * (1 - BASELINE_SMOOTHING) + fullAvg * BASELINE_SMOOTHING;
-          }
-
-          if (now - lastStatusLogTime > 1000) {
-            lastStatusLogTime = now;
-            log("📊 瞬間=" + fullAvg.toFixed(1) + " 平滑=" + smoothedVol.toFixed(1) + " 基準=" + ambientBaseline.toFixed(1) + " 門檻=" + dynamicThreshold.toFixed(1));
-          }
-
-          if (sustainCounter >= SUSTAIN_FRAMES && now - lastBlowTime > BLOW_COOLDOWN_MS) {
-            lastBlowTime = now;
-            sustainCounter = 0;
-            onBlowDetected(smoothedVol, ambientBaseline);
-          }
-
-          requestAnimationFrame(check);
-        }
-        check();
-      }
-
-      function onBlowDetected(vol, baseline) {
-        if (progress >= MAX_PROGRESS && !isRetreating) {
-          log("💨 息を検知！ vol=" + vol.toFixed(1) + " → 吹き飛ばす！");
-          animateRetreat();
-        } else if (!isRetreating) {
-          log("（まだ上限に達していないので無視）");
-        }
-      }
 
       function animateRetreat() {
         isRetreating = true;
+        updateBlowButton();
         const startProgress = progress;
         const startTime = Date.now();
 
@@ -546,15 +472,18 @@
             progress = 0;
             applyPose();
             isRetreating = false;
+            updateBlowButton();
             log("🌬️ 吹き飛ばし完了");
           }
         }
         requestAnimationFrame(step);
       }
 
-      document.getElementById("mic-start-btn").addEventListener("click", (e) => {
-        setupMic();
-        e.target.style.display = "none";
+      blowBtn.addEventListener("click", () => {
+        if (progress >= MAX_PROGRESS && !isRetreating) {
+          log("💨 「吹き飛ばす」ボタンが押された → 吹き飛ばす！");
+          animateRetreat();
+        }
       });
     }
   </script>
