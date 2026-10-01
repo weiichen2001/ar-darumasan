@@ -362,6 +362,27 @@
       } else {
         log("❌ mindar-image-system が見つかりません");
       }
+
+      // ---- ここから診断用ログ（原因を特定するための一時的なもの） ----
+      setTimeout(() => {
+        const videoEl = document.querySelector("video");
+        if (videoEl) {
+          log("📹 video: readyState=" + videoEl.readyState +
+            " paused=" + videoEl.paused +
+            " size=" + videoEl.videoWidth + "x" + videoEl.videoHeight +
+            " srcObject=" + (videoEl.srcObject ? "あり" : "なし"));
+        } else {
+          log("❌ video要素が見つかりません（MindARがvideoを作っていない）");
+        }
+        const canvasEl = sceneEl.canvas;
+        if (canvasEl) {
+          log("🖼️ canvas: " + canvasEl.width + "x" + canvasEl.height +
+            " CSS表示サイズ=" + canvasEl.clientWidth + "x" + canvasEl.clientHeight);
+        } else {
+          log("❌ canvasが見つかりません");
+        }
+      }, 2500);
+      // ---- 診断用ログここまで ----
     }
 
     /* ============ 既存のゲームロジック（凍結・接近・息の判定） ============ */
