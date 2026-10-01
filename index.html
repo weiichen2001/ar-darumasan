@@ -227,10 +227,18 @@
     <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
     <a-light type="directional" color="#FFF" intensity="0.6" position="1 1 1"></a-light>
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <!-- targetIndex 0 = 石のお家の写真マーカー（従来のもの） -->
     <a-entity id="target0" mindar-image-target="targetIndex: 0">
-      <a-entity id="rose-wrapper" position="0 0 0" scale="1 1 1" rotation="0 0 0">
-        <a-entity id="rose-normal" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
-        <a-entity id="rose-startled" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
+      <a-entity id="rose-wrapper-0" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+        <a-entity id="rose-normal-0" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+        <a-entity id="rose-startled-0" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
+      </a-entity>
+    </a-entity>
+    <!-- targetIndex 1 = レッドカーペットの写真マーカー（新規） -->
+    <a-entity id="target1" mindar-image-target="targetIndex: 1">
+      <a-entity id="rose-wrapper-1" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+        <a-entity id="rose-normal-1" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+        <a-entity id="rose-startled-1" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
       </a-entity>
     </a-entity>
   </a-scene>
@@ -392,12 +400,25 @@
 
     /* ============ 既存のゲームロジック（凍結・接近・息の判定） ============ */
     /* a-scene が静的にあるので、ページ読み込み時に一度だけ初期化してよい */
-    initGameLogic();
-    function initGameLogic() {
-      const roseEntity = document.getElementById('rose-wrapper');
-      const normalEl = document.getElementById('rose-normal');
-      const startledEl = document.getElementById('rose-startled');
-      const target0 = document.getElementById("target0");
+    /* 複数マーカー対応：マーカーごとに独立した状態を持つコントローラーを作る */
+
+    const blowBtn = document.getElementById("blow-btn");
+    const controllers = [];
+
+    function updateBlowButton() {
+      const anyMaxed = controllers.some(c => c.isMaxed());
+      if (anyMaxed) {
+        blowBtn.classList.add("visible");
+      } else {
+        blowBtn.classList.remove("visible");
+      }
+    }
+
+    function createRoseController(suffix) {
+      const roseEntity = document.getElementById('rose-wrapper-' + suffix);
+      const normalEl = document.getElementById('rose-normal-' + suffix);
+      const startledEl = document.getElementById('rose-startled-' + suffix);
+      const targetEl = document.getElementById('target' + suffix);
 
       const SPEED = 0.5;
       const MAX_PROGRESS = 5;
@@ -409,6 +430,7 @@
 
       const STARTLE_FLASH_MS = 220;
       const TILT_ANGLE = 18;
+      const RETREAT_DURATION_MS = 800;
 
       let progress = 0;
       let lostAt = null;
@@ -446,17 +468,7 @@
         requestAnimationFrame(tiltStep);
       }
 
-      const blowBtn = document.getElementById("blow-btn");
-
-      function updateBlowButton() {
-        if (progress >= MAX_PROGRESS && !isRetreating) {
-          blowBtn.classList.add("visible");
-        } else {
-          blowBtn.classList.remove("visible");
-        }
-      }
-
-      target0.addEventListener("targetFound", () => {
+      targetEl.addEventListener("targetFound", () => {
         if (isRetreating) return;
         if (lostAt !== null) {
           const lostDurationMs = Date.now() - lostAt;
@@ -465,20 +477,18 @@
             progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
             flashStartled();
           } else {
-            log("（ノイズ判定、無視）" + lostDurationMs + "ms");
+            log("（マーカー" + suffix + ": ノイズ判定、無視）" + lostDurationMs + "ms");
           }
           lostAt = null;
         }
-        log("🎯 発見！ progress=" + progress.toFixed(2));
+        log("🎯 マーカー" + suffix + " 発見！ progress=" + progress.toFixed(2));
         applyPose();
         updateBlowButton();
       });
 
-      target0.addEventListener("targetLost", () => {
+      targetEl.addEventListener("targetLost", () => {
         lostAt = Date.now();
       });
-
-      const RETREAT_DURATION_MS = 800;
 
       function animateRetreat() {
         isRetreating = true;
@@ -499,19 +509,29 @@
             applyPose();
             isRetreating = false;
             updateBlowButton();
-            log("🌬️ 吹き飛ばし完了");
+            log("🌬️ マーカー" + suffix + " 吹き飛ばし完了");
           }
         }
         requestAnimationFrame(step);
       }
 
-      blowBtn.addEventListener("click", () => {
-        if (progress >= MAX_PROGRESS && !isRetreating) {
-          log("💨 「吹き飛ばす」ボタンが押された → 吹き飛ばす！");
-          animateRetreat();
+      return {
+        isMaxed: () => progress >= MAX_PROGRESS && !isRetreating,
+        retreat: () => {
+          if (progress >= MAX_PROGRESS && !isRetreating) {
+            animateRetreat();
+          }
         }
-      });
+      };
     }
+
+    controllers.push(createRoseController(0));
+    controllers.push(createRoseController(1));
+
+    blowBtn.addEventListener("click", () => {
+      log("💨 「吹き飛ばす」ボタンが押された → 吹き飛ばす！");
+      controllers.forEach(c => c.retreat());
+    });
   </script>
 </body>
 
