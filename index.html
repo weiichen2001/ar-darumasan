@@ -144,8 +144,14 @@
       transform: translateX(-50%) scale(1);
       width: 76%;
       max-width: 294px;
+      background-color: transparent;
       background-image: url('assets/ticket-button.png');
       background-size: 100% 100%;
+      background-repeat: no-repeat;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
       border: none;
       cursor: pointer;
       padding: 18px 0;
@@ -221,9 +227,7 @@
   <!-- ===== ここから既存のAR画面 ===== -->
   <button id="blow-btn" class="ticket-btn">吹き飛ばす</button>
 
-  <a-scene id="ar-scene" color-space="sRGB" embedded
-    renderer="colorManagement: true"
-    vr-mode-ui="enabled: false"
+  <a-scene id="ar-scene" color-space="sRGB" embedded renderer="colorManagement: true" vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false"
     mindar-image="imageTargetSrc: targets/targets.mind; autoStart: false;">
     <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
