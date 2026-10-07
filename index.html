@@ -513,7 +513,7 @@
       /* バラが驚いて後ろへ逃げる間、バラの体から少しずつ花びらが取り残されて落ちる */
       /* 数値はシミュレーターの出力をそのまま貼り替えられます */
       const PETAL_IDS = ["#petal-1", "#petal-2", "#petal-3", "#petal-4"];
-      const PETAL_COUNT = 12;       // 花びらの数
+      const PETAL_COUNT = 20;       // 花びらの数
       const PETAL_SIZE = 0.19;      // 大きさ（バラの大きさに比例）
       const PETAL_RIM_X = 0.30;     // 花の頭の外周の横幅（バラの背丈を1として）
       const PETAL_RIM_Y = 0.28;     // 花の頭の外周の縦幅
@@ -523,12 +523,12 @@
       const PETAL_FRONT = 0.30;      // 花びらをバラの手前に出す量
       const PETAL_ONTOP = 0;        // 1＝バラの後ろに回っても常に手前に描く
       const PETAL_SPEED = 0.9;      // 動きの速さ（全体）
-      const PETAL_UP = 0.05;        // ふわっと浮く強さ
+      const PETAL_UP = 0;        // ふわっと浮く強さ（0＝上へは飛ばない）
       const PETAL_SIDE = 1.2;       // 左右への広がり
       const PETAL_Z = 0.3;          // 手前(+)／奥(−)へ流される強さ
       const PETAL_GRAVITY = 1.8;    // 落ちる力
       const PETAL_DRAG = 0.6;       // 1秒あたりの速度の残り（小さいほどすぐ減速）
-      const PETAL_INHERIT = 0.15;    // バラの逃げる勢いを引き継ぐ割合
+      const PETAL_INHERIT = 0;    // バラの逃げる勢いを引き継ぐ割合
       const PETAL_WOBBLE = 0.15;    // ゆらゆら横揺れの大きさ
       const PETAL_WOBBLE_SPEED = 6.8; // 横揺れの速さ
       const PETAL_SPIN = 1.0;       // くるくる回る速さ
@@ -615,7 +615,7 @@
               p.ly = PETAL_HEAD_Y + cy * PETAL_RIM_Y * ring;
               p.lz = PETAL_FRONT + p.rr[2] * 0.2;
               p.vx = (cx * PETAL_OUT * 1.2 + p.jx * 0.4) * PETAL_SIDE * PETAL_SPEED;
-              p.vy = (cy * PETAL_OUT * 0.6 + roseVy / kNow * PETAL_INHERIT * (0.5 + p.jy) + p.jy * PETAL_UP) * PETAL_SPEED;
+              p.vy = (Math.min(cy, 0) * PETAL_OUT * 0.6 + roseVy / kNow * PETAL_INHERIT * (0.5 + p.jy) + p.jy * PETAL_UP) * PETAL_SPEED;
               p.vz = PETAL_Z * (0.3 + p.jz) * PETAL_SPEED;
               p.started = true;
             }
