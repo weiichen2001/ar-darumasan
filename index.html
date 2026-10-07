@@ -268,6 +268,13 @@
         <a-entity id="rose-startled-1" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
       </a-entity>
     </a-entity>
+    <!-- targetIndex 2 = 石のお家の写真マーカー（天気の良い日の写真）※ target0 と同じバラを共有 -->
+    <a-entity id="target2" mindar-image-target="targetIndex: 2">
+      <a-entity id="rose-wrapper-2" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+        <a-entity id="rose-normal-2" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+        <a-entity id="rose-startled-2" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
+      </a-entity>
+    </a-entity>
   </a-scene>
 
   <div id="debug-log">起動中...</div>
@@ -441,11 +448,18 @@
       }
     }
 
-    function createRoseController(suffix) {
-      const roseEntity = document.getElementById('rose-wrapper-' + suffix);
-      const normalEl = document.getElementById('rose-normal-' + suffix);
-      const startledEl = document.getElementById('rose-startled-' + suffix);
-      const targetEl = document.getElementById('target' + suffix);
+    /* suffixes：同じ被写体（＝同じ玫瑰）を共有するマーカー番号の配列
+       例）[0, 2] なら target0 と target2 は同じ1本のバラの状態(progress)を共有する */
+    function createRoseController(suffixes) {
+      const parts = suffixes.map(function (sfx) {
+        return {
+          roseEntity: document.getElementById('rose-wrapper-' + sfx),
+          normalEl: document.getElementById('rose-normal-' + sfx),
+          startledEl: document.getElementById('rose-startled-' + sfx),
+          targetEl: document.getElementById('target' + sfx)
+        };
+      });
+      const label = suffixes.join("/");
 
       const SPEED = 0.5;
       const MAX_PROGRESS = 5;
@@ -461,35 +475,48 @@
 
       let progress = 0;
       let lostAt = null;
+      let foundCount = 0; // いま認識中のマーカー数（同じ被写体の写真どれかが見えていればOK）
       let isRetreating = false;
       let isStartling = false;
+
+      function setStartled(on) {
+        parts.forEach(function (p) {
+          p.startledEl.setAttribute('visible', on);
+          p.normalEl.setAttribute('visible', !on);
+        });
+      }
+
+      function setTilt(z) {
+        parts.forEach(function (p) {
+          p.roseEntity.setAttribute('rotation', { x: 0, y: 0, z: z });
+        });
+      }
 
       function applyPose() {
         const ratio = progress / MAX_PROGRESS;
         const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
         const yValue = BASE_Y + progress * Y_PER_PROGRESS;
-        roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
-        roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
+        parts.forEach(function (p) {
+          p.roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
+          p.roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
+        });
       }
 
       function flashStartled() {
         isStartling = true;
-        startledEl.setAttribute('visible', true);
-        normalEl.setAttribute('visible', false);
+        setStartled(true);
 
         const startTime = Date.now();
         function tiltStep() {
           const elapsed = Date.now() - startTime;
           const t = Math.min(elapsed / STARTLE_FLASH_MS, 1);
-          const wobble = Math.sin(t * Math.PI) * TILT_ANGLE;
-          roseEntity.setAttribute('rotation', { x: 0, y: 0, z: wobble });
+          setTilt(Math.sin(t * Math.PI) * TILT_ANGLE);
           if (t < 1) {
             requestAnimationFrame(tiltStep);
           } else {
-            roseEntity.setAttribute('rotation', { x: 0, y: 0, z: 0 });
+            setTilt(0);
             if (!isRetreating) {
-              startledEl.setAttribute('visible', false);
-              normalEl.setAttribute('visible', true);
+              setStartled(false);
             }
             isStartling = false;
           }
@@ -497,32 +524,43 @@
         requestAnimationFrame(tiltStep);
       }
 
-      targetEl.addEventListener("targetFound", () => {
-        if (isRetreating) return;
-        if (lostAt !== null) {
-          const lostDurationMs = Date.now() - lostAt;
-          if (lostDurationMs >= MIN_LOST_MS) {
-            const elapsedSec = lostDurationMs / 1000;
-            progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
-            flashStartled();
-          } else {
-            log("（マーカー" + suffix + ": ノイズ判定、無視）" + lostDurationMs + "ms");
+      parts.forEach(function (p) {
+        p.targetEl.addEventListener("targetFound", () => {
+          foundCount++;
+          if (isRetreating) return;
+          // もう一枚の写真で既に認識中なら、「見失って戻った」扱いにはしない
+          if (foundCount > 1) {
+            applyPose();
+            return;
           }
-          lostAt = null;
-        }
-        log("🎯 マーカー" + suffix + " 発見！ progress=" + progress.toFixed(2));
-        applyPose();
-        updateBlowButton();
-      });
+          if (lostAt !== null) {
+            const lostDurationMs = Date.now() - lostAt;
+            if (lostDurationMs >= MIN_LOST_MS) {
+              const elapsedSec = lostDurationMs / 1000;
+              progress = Math.min(progress + elapsedSec * SPEED, MAX_PROGRESS);
+              flashStartled();
+            } else {
+              log("（マーカー" + label + ": ノイズ判定、無視）" + lostDurationMs + "ms");
+            }
+            lostAt = null;
+          }
+          log("🎯 マーカー" + label + " 発見！ progress=" + progress.toFixed(2));
+          applyPose();
+          updateBlowButton();
+        });
 
-      targetEl.addEventListener("targetLost", () => {
-        lostAt = Date.now();
+        p.targetEl.addEventListener("targetLost", () => {
+          foundCount = Math.max(0, foundCount - 1);
+          // すべての写真を見失ったときだけ「見失った」とみなす
+          if (foundCount === 0) {
+            lostAt = Date.now();
+          }
+        });
       });
 
       function animateRetreat() {
         isRetreating = true;
-        startledEl.setAttribute('visible', true);
-        normalEl.setAttribute('visible', false);
+        setStartled(true);
         updateBlowButton();
         const startProgress = progress;
         const startTime = Date.now();
@@ -539,10 +577,9 @@
             progress = 0;
             applyPose();
             isRetreating = false;
-            startledEl.setAttribute('visible', false);
-            normalEl.setAttribute('visible', true);
+            setStartled(false);
             updateBlowButton();
-            log("🌬️ マーカー" + suffix + " 吹き飛ばし完了");
+            log("🌬️ マーカー" + label + " 吹き飛ばし完了");
           }
         }
         requestAnimationFrame(step);
@@ -558,8 +595,9 @@
       };
     }
 
-    controllers.push(createRoseController(0));
-    controllers.push(createRoseController(1));
+    // 石のお家は2枚の写真（0=従来 / 2=天気の良い日）で1本のバラを共有、レッドカーペットは別のバラ
+    controllers.push(createRoseController([0, 2]));
+    controllers.push(createRoseController([1]));
 
     blowBtn.addEventListener("click", () => {
       log("💨 「吹き飛ばす」ボタンが押された → 吹き飛ばす！");
