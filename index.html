@@ -502,6 +502,95 @@
         });
       }
 
+      /* ===== 吹き飛ばしの花びら ===== */
+      const PETAL_FILES = [
+        "assets/petals/petal-1.png",
+        "assets/petals/petal-2.png",
+        "assets/petals/petal-3.png",
+        "assets/petals/petal-4.png"
+      ];
+      const PETAL_COUNT = 18;     // 花びらの数
+      const PETAL_SIZE = 0.15;    // 大きさ（バラの大きさに比例）
+      const PETAL_SPREAD = 0.3;   // 最初にばらける範囲
+      const PETAL_SPEED = 1.0;    // 飛ぶ速さ
+      const PETAL_LIFE_MIN = 1200; // 寿命(ms)
+      const PETAL_LIFE_MAX = 1900;
+
+      function spawnPetals() {
+        const active = parts.find(function (p) { return p.targetEl.object3D.visible; }) || parts[0];
+        const parent = active.targetEl;
+        const pos = active.roseEntity.object3D.position;
+        const k = Math.max(active.roseEntity.object3D.scale.x, 1);
+        const list = [];
+
+        for (let i = 0; i < PETAL_COUNT; i++) {
+          const el = document.createElement('a-plane');
+          const size = PETAL_SIZE * k * (0.7 + Math.random() * 0.6);
+          el.setAttribute('width', size);
+          el.setAttribute('height', size);
+          el.setAttribute('material', {
+            src: PETAL_FILES[Math.floor(Math.random() * PETAL_FILES.length)],
+            transparent: true,
+            side: 'double',
+            shader: 'flat',
+            alphaTest: 0.02
+          });
+          parent.appendChild(el);
+
+          list.push({
+            el: el,
+            x: pos.x + (Math.random() - 0.5) * PETAL_SPREAD * k,
+            y: pos.y + Math.random() * PETAL_SPREAD * k,
+            z: (Math.random() - 0.5) * 0.2 * k,
+            vx: (Math.random() - 0.5) * 1.6 * k * PETAL_SPEED,
+            vy: (0.4 + Math.random() * 1.2) * k * PETAL_SPEED,
+            vz: (-0.8 + Math.random() * 0.9) * k * PETAL_SPEED,
+            rx: Math.random() * 6.28, ry: Math.random() * 6.28, rz: Math.random() * 6.28,
+            srx: (Math.random() - 0.5) * 8, sry: (Math.random() - 0.5) * 8, srz: (Math.random() - 0.5) * 6,
+            wob: Math.random() * 6.28,
+            life: PETAL_LIFE_MIN + Math.random() * (PETAL_LIFE_MAX - PETAL_LIFE_MIN)
+          });
+        }
+
+        const t0 = Date.now();
+        let last = t0;
+        function tick() {
+          const now = Date.now();
+          const dt = (now - last) / 1000;
+          last = now;
+          const elapsed = now - t0;
+          let alive = 0;
+
+          list.forEach(function (p) {
+            if (p.dead) return;
+            const t = elapsed / p.life;
+            if (t >= 1) {
+              if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
+              p.dead = true;
+              return;
+            }
+            alive++;
+            p.vx *= 0.99;
+            p.vy *= 0.99;
+            p.x += p.vx * dt + Math.sin(elapsed / 180 + p.wob) * 0.1 * k * dt;
+            p.y += p.vy * dt;
+            p.z += p.vz * dt;
+            p.rx += p.srx * dt;
+            p.ry += p.sry * dt;
+            p.rz += p.srz * dt;
+            p.el.object3D.position.set(p.x, p.y, p.z);
+            p.el.object3D.rotation.set(p.rx, p.ry, p.rz);
+            const mesh = p.el.getObject3D('mesh');
+            if (mesh && mesh.material) {
+              mesh.material.opacity = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+            }
+          });
+
+          if (alive > 0) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+
       function flashStartled() {
         isStartling = true;
         setStartled(true);
@@ -561,6 +650,7 @@
       function animateRetreat() {
         isRetreating = true;
         setStartled(true);
+        spawnPetals();
         updateBlowButton();
         const startProgress = progress;
         const startTime = Date.now();
