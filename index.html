@@ -510,30 +510,34 @@
       }
 
       /* ===== 吹き飛ばしの花びら ===== */
+      /* バラが驚いて後ろへ逃げる間、バラの体から少しずつ花びらが取り残されて落ちる */
       /* 数値はシミュレーターの出力をそのまま貼り替えられます */
       const PETAL_IDS = ["#petal-1", "#petal-2", "#petal-3", "#petal-4"];
-      const PETAL_COUNT = 20;       // 花びらの数
+      const PETAL_COUNT = 5;       // 花びらの数
       const PETAL_SIZE = 0.21;      // 大きさ（バラの大きさに比例）
-      const PETAL_SPREAD = 0.50;     // 最初にばらける範囲
-      const PETAL_SPEED = 1.0;      // 飛ぶ速さ（全体）
-      const PETAL_UP = 1.1;         // 上に舞い上がる強さ
-      const PETAL_SIDE = 1.0;       // 左右への広がり
-      const PETAL_AWAY = 0.8;       // 奥（遠く）へ吹かれる強さ
-      const PETAL_GRAVITY = 0.0;    // 落ちる力（0=落ちない）
-      const PETAL_DRAG = 0.43;      // 1秒あたりの速度の残り（小さいほどすぐ減速）
-      const PETAL_WOBBLE = 0.1;     // ゆらゆら横揺れの大きさ
+      const PETAL_SPREAD = 0.30;     // 離れる位置のばらけ（バラの体の範囲）
+      const PETAL_SPEED = 1.0;      // 動きの速さ（全体）
+      const PETAL_UP = 0.15;        // ふわっと浮く強さ
+      const PETAL_SIDE = 0.8;       // 左右への広がり
+      const PETAL_AWAY = 0.3;       // 奥（遠く）へ流される強さ
+      const PETAL_GRAVITY = 0.6;    // 落ちる力
+      const PETAL_DRAG = 0.5;       // 1秒あたりの速度の残り（小さいほどすぐ減速）
+      const PETAL_INHERIT = 0.5;    // バラの逃げる勢いを引き継ぐ割合
+      const PETAL_WOBBLE = 0.15;    // ゆらゆら横揺れの大きさ
       const PETAL_WOBBLE_SPEED = 5.6; // 横揺れの速さ
       const PETAL_SPIN = 1.0;       // くるくる回る速さ
-      const PETAL_STAGGER_MS = 60;   // 飛び出すタイミングのばらつき(ms)
-      const PETAL_FADE_START = 0.6; // 寿命の何割から消え始めるか
-      const PETAL_LIFE_MIN = 1050;  // 寿命(ms)
-      const PETAL_LIFE_MAX = 1900;
+      const PETAL_STAGGER_MS = 1000; // 花びらが離れ始める時間の幅(ms)（バラが退く時間くらい）
+      const PETAL_FADE_START = 0.5; // 寿命の何割から消え始めるか
+      const PETAL_LIFE_MIN = 1300;  // 寿命(ms)
+      const PETAL_LIFE_MAX = 2200;
 
       function spawnPetals() {
         const active = parts.find(function (p) { return p.targetEl.object3D.visible; }) || parts[0];
         const parent = active.targetEl;
-        const pos = active.roseEntity.object3D.position;
-        const k = Math.max(active.roseEntity.object3D.scale.x, 1);
+        const roseObj = active.roseEntity.object3D;
+        const k = Math.max(roseObj.scale.x, 1);
+        // バラが逃げる速さ（上へ／小さくなりながら）
+        const roseVy = -Y_PER_PROGRESS * progress / (RETREAT_DURATION_MS / 1000);
         const list = [];
 
         for (let i = 0; i < PETAL_COUNT; i++) {
@@ -555,14 +559,14 @@
 
           list.push({
             el: el,
+            started: false,
             shown: false,
             delay: Math.random() * PETAL_STAGGER_MS,
-            x: pos.x + (Math.random() - 0.5) * PETAL_SPREAD * k,
-            y: pos.y + Math.random() * PETAL_SPREAD * k,
-            z: (Math.random() - 0.5) * 0.2 * k,
+            // 離れた瞬間のバラの位置・大きさから出発する（start で決める）
+            rr: [Math.random() - 0.5, Math.random(), Math.random() - 0.5],
             vx: (Math.random() - 0.5) * PETAL_SIDE * k * PETAL_SPEED,
-            vy: (0.4 + Math.random() * 1.2) * PETAL_UP * k * PETAL_SPEED,
-            vz: (-PETAL_AWAY + Math.random() * 0.9) * k * PETAL_SPEED,
+            vy: (roseVy * PETAL_INHERIT * (0.5 + Math.random()) + Math.random() * PETAL_UP * k) * PETAL_SPEED,
+            vz: -Math.random() * PETAL_AWAY * k * PETAL_SPEED,
             rx: Math.random() * 6.28, ry: Math.random() * 6.28, rz: Math.random() * 6.28,
             srx: (Math.random() - 0.5) * 8 * PETAL_SPIN,
             sry: (Math.random() - 0.5) * 8 * PETAL_SPIN,
@@ -587,6 +591,14 @@
             alive++;
             const local = elapsed - p.delay;
             if (local < 0) return;
+            if (!p.started) {
+              // この瞬間のバラの体から離れる
+              const kNow = Math.max(roseObj.scale.x, 1);
+              p.x = roseObj.position.x + p.rr[0] * PETAL_SPREAD * kNow;
+              p.y = roseObj.position.y + p.rr[1] * PETAL_SPREAD * kNow;
+              p.z = p.rr[2] * 0.2 * kNow;
+              p.started = true;
+            }
             const t = local / p.life;
             if (t >= 1) {
               if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
