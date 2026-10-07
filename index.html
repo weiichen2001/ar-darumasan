@@ -513,10 +513,10 @@
       /* バラが驚いて後ろへ逃げる間、バラの体から少しずつ花びらが取り残されて落ちる */
       /* 数値はシミュレーターの出力をそのまま貼り替えられます */
       const PETAL_IDS = ["#petal-1", "#petal-2", "#petal-3", "#petal-4"];
-      const PETAL_COUNT = 15;       // 花びらの数
+      const PETAL_COUNT = 10;       // 花びらの数
       const PETAL_SIZE = 0.19;      // 大きさ（バラの大きさに比例）
       const PETAL_SPREAD = 0.3;     // 離れる位置のばらけ（バラの頭まわりの範囲）
-      const PETAL_HEAD_Y = 0.85;    // バラの頭の高さ（バラの背丈の目安）
+      const PETAL_HEAD_Y = 0.95;    // バラの頭の高さ（バラの背丈の目安）
       const PETAL_FRONT = 0.30;      // 花びらをバラの手前に出す量
       const PETAL_ONTOP = 0;        // 1＝バラの後ろに回っても常に手前に描く
       const PETAL_SPEED = 0.9;      // 動きの速さ（全体）
@@ -530,6 +530,7 @@
       const PETAL_WOBBLE_SPEED = 6.8; // 横揺れの速さ
       const PETAL_SPIN = 1.0;       // くるくる回る速さ
       const PETAL_STAGGER_MS = 1000; // 花びらが離れ始める時間の幅(ms)（バラが退く時間くらい）
+      const PETAL_FADE_IN_MS = 150; // 花から離れて現れるまでの時間(ms)
       const PETAL_FADE_START = 0.5; // 寿命の何割から消え始めるか
       const PETAL_LIFE_MIN = 1300;  // 寿命(ms)
       const PETAL_LIFE_MAX = 2200;
@@ -569,9 +570,7 @@
             delay: Math.random() * PETAL_STAGGER_MS,
             // 離れた瞬間のバラの位置・大きさから出発する（start で決める）
             rr: [Math.random() - 0.5, Math.random(), Math.random() - 0.5],
-            vx: (Math.random() - 0.5) * PETAL_SIDE * k * PETAL_SPEED,
-            vy: (roseVy * PETAL_INHERIT * (0.5 + Math.random()) + Math.random() * PETAL_UP * k) * PETAL_SPEED,
-            vz: PETAL_Z * (0.3 + Math.random()) * k * PETAL_SPEED,
+            jx: Math.random() - 0.5, jy: Math.random(), jz: Math.random(),
             rx: Math.random() * 6.28, ry: Math.random() * 6.28, rz: Math.random() * 6.28,
             srx: (Math.random() - 0.5) * 8 * PETAL_SPIN,
             sry: (Math.random() - 0.5) * 8 * PETAL_SPIN,
@@ -602,7 +601,12 @@
               p.x = roseObj.position.x + p.rr[0] * PETAL_SPREAD * kNow;
               p.y = roseObj.position.y + (PETAL_HEAD_Y + (p.rr[1] - 0.5) * PETAL_SPREAD) * kNow;
               p.z = (PETAL_FRONT + p.rr[2] * PETAL_SPREAD) * kNow;
-              p.el.object3D.scale.setScalar(kNow / k); // 離れた時点のバラの大きさに合わせる
+              p.k = kNow;
+              p.k0 = kNow / k; // 離れた時点のバラの大きさに合わせる
+              // 勢いも離れた時点のバラの大きさに合わせる。花の左側から出た花びらは左へ、右は右へ（花から剥がれる向き）
+              p.vx = (p.rr[0] * 1.2 + p.jx * 0.4) * PETAL_SIDE * kNow * PETAL_SPEED;
+              p.vy = (roseVy * PETAL_INHERIT * (0.5 + p.jy) + p.jy * PETAL_UP * kNow) * PETAL_SPEED;
+              p.vz = PETAL_Z * (0.3 + p.jz) * kNow * PETAL_SPEED;
               p.started = true;
             }
             const t = local / p.life;
@@ -614,8 +618,8 @@
             p.vx *= drag;
             p.vy *= drag;
             p.vz *= drag;
-            p.vy -= PETAL_GRAVITY * k * dt;
-            p.x += p.vx * dt + Math.sin(local / 1000 * PETAL_WOBBLE_SPEED + p.wob) * PETAL_WOBBLE * k * dt;
+            p.vy -= PETAL_GRAVITY * p.k * dt;
+            p.x += p.vx * dt + Math.sin(local / 1000 * PETAL_WOBBLE_SPEED + p.wob) * PETAL_WOBBLE * p.k * dt;
             p.y += p.vy * dt;
             p.z += p.vz * dt;
             p.rx += p.srx * dt;
@@ -631,7 +635,11 @@
               p.shown = true;
               p.el.object3D.visible = true;
             }
-            mesh.material.opacity = t < PETAL_FADE_START ? 1 : 1 - (t - PETAL_FADE_START) / (1 - PETAL_FADE_START);
+            // 離れた瞬間は小さく・薄く現れて、すぐ元の大きさになる（突然ぱっと出ない）
+            const fin = PETAL_FADE_IN_MS > 0 ? Math.min(local / PETAL_FADE_IN_MS, 1) : 1;
+            p.el.object3D.scale.setScalar(p.k0 * (0.4 + 0.6 * fin));
+            const fout = t < PETAL_FADE_START ? 1 : 1 - (t - PETAL_FADE_START) / (1 - PETAL_FADE_START);
+            mesh.material.opacity = fin * fout;
           });
 
           if (alive > 0) requestAnimationFrame(tick);
