@@ -518,6 +518,7 @@
       const PETAL_RIM_X = 0.30;     // 花の頭の外周の横幅（バラの背丈を1として）
       const PETAL_RIM_Y = 0.28;     // 花の頭の外周の縦幅
       const PETAL_SPREAD = 0.3;     // 外周の厚み（ふちからのばらけ）
+      const PETAL_MAX_Y = 1.0;      // 花びらの最高位置（バラの頭頂は約1.15。これより上には出ない）
       const PETAL_OUT = 1.0;        // 外へ押し出される強さ
       const PETAL_HEAD_Y = 0.95;    // バラの頭の高さ（バラの背丈の目安）
       const PETAL_FRONT = 0.30;      // 花びらをバラの手前に出す量
@@ -612,7 +613,8 @@
               const ring = 1 + (p.rr[1] - 0.5) * PETAL_SPREAD * 2; // 外周の厚み
               const cx = Math.cos(p.ang), cy = Math.sin(p.ang);
               p.lx = cx * PETAL_RIM_X * ring;
-              p.ly = PETAL_HEAD_Y + cy * PETAL_RIM_Y * ring;
+              // 花びらの高さの上限（バラの頭頂1.15より少し下）。上限に張り付かないよう少しずつずらす
+              p.ly = Math.min(PETAL_HEAD_Y + cy * PETAL_RIM_Y * ring, PETAL_MAX_Y - p.jy * 0.06);
               p.lz = PETAL_FRONT + p.rr[2] * 0.2;
               p.vx = (cx * PETAL_OUT * 1.2 + p.jx * 0.4) * PETAL_SIDE * PETAL_SPEED;
               p.vy = (Math.min(cy, 0) * PETAL_OUT * 0.6 + roseVy / kNow * PETAL_INHERIT * (0.5 + p.jy) + p.jy * PETAL_UP) * PETAL_SPEED;
@@ -630,7 +632,7 @@
             p.vz *= drag;
             p.vy -= PETAL_GRAVITY * dt;
             p.lx += p.vx * dt + Math.sin(local / 1000 * PETAL_WOBBLE_SPEED + p.wob) * PETAL_WOBBLE * dt;
-            p.ly += p.vy * dt;
+            p.ly = Math.min(p.ly + p.vy * dt, PETAL_MAX_Y);
             p.lz += p.vz * dt;
             // バラの後退（小さくなる・遠ざかる）にどれだけ付いていくか。1＝バラと同じ空間にいる
             const kF = p.k + (Math.max(roseObj.scale.x, 1) - p.k) * PETAL_FOLLOW;
