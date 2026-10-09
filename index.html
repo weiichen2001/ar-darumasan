@@ -282,6 +282,13 @@
         <a-entity id="rose-startled-2" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
       </a-entity>
     </a-entity>
+    <!-- targetIndex 3 = 石のお家の写真マーカー（草がきれいになった最新の写真）※ target0/2 と同じバラを共有 -->
+    <a-entity id="target3" mindar-image-target="targetIndex: 3">
+      <a-entity id="rose-wrapper-3" position="0 0 0" scale="1 1 1" rotation="0 0 0">
+        <a-entity id="rose-normal-3" gltf-model="models/rose_normal.glb" visible="true"></a-entity>
+        <a-entity id="rose-startled-3" gltf-model="models/a_rose.glb" visible="false" rotation="0 20 0"></a-entity>
+      </a-entity>
+    </a-entity>
   </a-scene>
 
   <div id="debug-log">起動中...</div>
@@ -456,10 +463,16 @@
     }
 
     /* suffixes：同じ被写体（＝同じ玫瑰）を共有するマーカー番号の配列
-       例）[0, 2] なら target0 と target2 は同じ1本のバラの状態(progress)を共有する */
-    function createRoseController(suffixes) {
+       例）[0, 2] なら target0 と target2 は同じ1本のバラの状態(progress)を共有する
+       offsets：写真ごとの位置補正 { 番号: {x, y} }（単位=マーカー幅、yがマイナスで下、xがマイナスで左） */
+    function createRoseController(suffixes, offsets) {
+      offsets = offsets || {};
       const parts = suffixes.map(function (sfx) {
+        const off = offsets[sfx] || {};
         return {
+          offX: off.x || 0,
+          offY: off.y || 0,
+          found: false,
           roseEntity: document.getElementById('rose-wrapper-' + sfx),
           normalEl: document.getElementById('rose-normal-' + sfx),
           startledEl: document.getElementById('rose-startled-' + sfx),
@@ -483,6 +496,7 @@
       let progress = 0;
       let lostAt = null;
       let foundCount = 0; // いま認識中のマーカー数（同じ被写体の写真どれかが見えていればOK）
+      let activePart = null; // 同時に複数の写真を認識しても、バラを出すのは1つだけ
       let isRetreating = false;
       let isStartling = false;
 
@@ -504,7 +518,7 @@
         const scaleValue = BASE_SCALE + ratio * (MAX_SCALE - BASE_SCALE);
         const yValue = BASE_Y + progress * Y_PER_PROGRESS;
         parts.forEach(function (p) {
-          p.roseEntity.setAttribute('position', { x: 0, y: yValue, z: 0 });
+          p.roseEntity.setAttribute('position', { x: p.offX, y: yValue + p.offY, z: 0 });
           p.roseEntity.setAttribute('scale', { x: scaleValue, y: scaleValue, z: scaleValue });
         });
       }
@@ -541,7 +555,7 @@
       const PETAL_LIFE_MAX = 2200;
 
       function spawnPetals() {
-        const active = parts.find(function (p) { return p.targetEl.object3D.visible; }) || parts[0];
+        const active = (activePart && activePart.targetEl.object3D.visible) ? activePart : (parts.find(function (p) { return p.targetEl.object3D.visible; }) || parts[0]);
         const parent = active.targetEl;
         const roseObj = active.roseEntity.object3D;
         const k = Math.max(roseObj.scale.x, 1);
@@ -686,9 +700,15 @@
         requestAnimationFrame(tiltStep);
       }
 
+      function updateActive() {
+        parts.forEach(function (q) { q.roseEntity.setAttribute('visible', q === activePart); });
+      }
+
       parts.forEach(function (p) {
         p.targetEl.addEventListener("targetFound", () => {
           foundCount++;
+          p.found = true;
+          if (!activePart) { activePart = p; updateActive(); }
           if (isRetreating) return;
           // もう一枚の写真で既に認識中なら、「見失って戻った」扱いにはしない
           if (foundCount > 1) {
@@ -713,6 +733,11 @@
 
         p.targetEl.addEventListener("targetLost", () => {
           foundCount = Math.max(0, foundCount - 1);
+          p.found = false;
+          if (activePart === p) {
+            activePart = parts.find(function (q) { return q.found; }) || null;
+            updateActive();
+          }
           // すべての写真を見失ったときだけ「見失った」とみなす
           if (foundCount === 0) {
             lostAt = Date.now();
@@ -758,8 +783,14 @@
       };
     }
 
-    // 石のお家は2枚の写真（0=従来 / 2=天気の良い日）で1本のバラを共有、レッドカーペットは別のバラ
-    controllers.push(createRoseController([0, 2]));
+    // 石のお家は3枚の写真（0=従来 / 2=天気の良い日 / 3=草がきれいな最新）で1本のバラを共有
+    // offsets＝バラをお家の「扉から出てくる」位置に下げる補正（写真ごと。y: マイナスで下、x: マイナスで左）
+    // レッドカーペットは補正なし（従来の位置のまま）
+    controllers.push(createRoseController([0, 2, 3], {
+      0: { x: -0.12, y: -0.55 },
+      2: { x: -0.15, y: -0.67 },
+      3: { x: -0.11, y: -0.55 }
+    }));
     controllers.push(createRoseController([1]));
 
     blowBtn.addEventListener("click", () => {
